@@ -1,0 +1,5 @@
+include requirements.txt
+include docs/tutorial.ipynb
+include docs/tutorial-hod.ipynb
+recursive-include dark_emulator/data *
+recursive-include dark_emulator/learned_data *

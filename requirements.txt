@@ -1,0 +1,7 @@
+# requirements for dark emulator modules
+numpy
+scipy
+george
+# additionnal requirements for hod modules
+#colossus
+pyfftlog
