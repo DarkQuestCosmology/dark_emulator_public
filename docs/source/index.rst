@@ -6,8 +6,8 @@
 Dark Emulator's documentation
 =====================================
 
-Dark emulator is a cosmology code for calculating summary statistics of large scale structure,
-which enables fast and accurate computations of halo clustering quantities, the halo mass function, halo-matter cross-correlation, and halo auto-correlation as a function of halo masses, redshift,
+Dark emulator is a cosmology code for calculating summary statistics of large scale structure constracted as a part of Dark Quest Project (https://darkquestcosmology.github.io/).
+The "dark_emulator" python package enables fast and accurate computations of halo clustering quantities. The current version supports the halo mass function, halo-matter cross-correlation, and halo auto-correlation as a function of halo masses, redshift,
 separations and cosmological models.
 
 See the :doc:`tutorial` for an introductory set of examples of how to use the DarkEmulator package.
@@ -16,11 +16,11 @@ When you use the HOD module, you can quickly learn the module with :doc:`tutoria
 
 In order to install dark emulator package, use pip::
 
-   pip install dark-emulator
+   pip install dark_emulator
 
 or use conda::
 
-   conda install -c *** dark_emulator
+   conda install -c nishimichi dark_emulator
 
 
 .. toctree::
@@ -30,6 +30,9 @@ or use conda::
    modules
    tutorial
    tutorial-hod
+
+The dark_emulator package is maintained on github (https://github.com/DarkQuestCosmology/dark_emulator_public).
+
 
 Indices and tables
 ==================
