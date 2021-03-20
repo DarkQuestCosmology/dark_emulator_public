@@ -1,4 +1,9 @@
 # Dark Emulator
+[![Anaconda-Server Badge](https://anaconda.org/nishimichi/dark_emulator/badges/version.svg)](https://anaconda.org/nishimichi/dark_emulator)
+[![Anaconda-Server Badge](https://anaconda.org/nishimichi/dark_emulator/badges/latest_release_date.svg)](https://anaconda.org/nishimichi/dark_emulator)
+[![Anaconda-Server Badge](https://anaconda.org/nishimichi/dark_emulator/badges/license.svg)](https://anaconda.org/nishimichi/dark_emulator)
+[![Anaconda-Server Badge](https://anaconda.org/nishimichi/dark_emulator/badges/downloads.svg)](https://anaconda.org/nishimichi/dark_emulator)
+
 A repository for emulators of our simulation suite.
 ## Install
 In order to install dark emulator package, use pip:
