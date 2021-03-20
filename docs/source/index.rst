@@ -6,7 +6,7 @@
 Dark Emulator's documentation
 =====================================
 
-Dark emulator is a cosmology code for calculating summary statistics of large scale structure constracted as a part of Dark Quest Project (https://darkquestcosmology.github.io/).
+Dark emulator is a cosmology code for calculating summary statistics of large scale structure constructed as a part of Dark Quest Project (https://darkquestcosmology.github.io/).
 The "dark_emulator" python package enables fast and accurate computations of halo clustering quantities. The current version supports the halo mass function, halo-matter cross-correlation, and halo auto-correlation as a function of halo masses, redshift,
 separations and cosmological models.
 
