@@ -31,7 +31,7 @@ setup(
     long_description_content_type='text/markdown',
     url=find_from_doc('url'),
     author=find_from_doc('author'),
-    author_email='takahiro.nishimichi@yukawa.kyoto-u.ac.jp, hironao.miyatake@iar.nagoya-u.ac.jp',
+    author_email='dark_emulator@ipmu.jp',
     keywords=['cosmology', 'large scale structure', 'halo', 'gaussian process', 'machine learning'],
     packages=packages,
     include_package_data=True,
