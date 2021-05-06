@@ -276,7 +276,7 @@ class darkemu_x_hod(base_class):
 
     def _compute_ng_cen(self):  # central galaxy number density
         self.ng_cen = self.do_integration(
-            self.dndM * self.Ncen * self.Mh, dx=dlogMh)
+            self.dndM * self.Ncen * self.Mh, dx=self.dlogMh)
         self.ng_cen_computed = True
 
     def _compute_p_hh_spl_experiment(self, redshift):
@@ -1592,6 +1592,28 @@ class darkemu_x_hod(base_class):
         if self.ng_computed == False:
             self._compute_ng()
         return self.ng
+
+    def get_ng_cen(self, redshift):
+        """get_ng_cen
+
+        Compute abundance of central galaxies :math:`n_{g,\mathrm{cen}}`.
+
+        Args:
+            redshift (float): redshift at which the central galaxies are located
+
+        Returns:
+            float: abundance of central galaxies in :math:`h^3\mathrm{Mpc}^{-3}`
+        """
+
+        if self.dndM_computed == False:
+            self._compute_dndM(redshift)
+        if self.dndM_spl_computed == False:
+            self._compute_dndM_spl(redshift)
+        if self.HOD_computed == False:
+            self._compute_HOD()
+        if self.ng_computed == False:
+            self._compute_ng_cen()
+        return self.ng_cen
 
     # methods for concentration
     def _get_M_for_delta_c(self, delta_c = 1.686):
