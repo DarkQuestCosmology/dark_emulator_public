@@ -61,7 +61,7 @@ class base_class(object):
 
         Args:
             cparam (numpy array): Cosmological parameters
-                :math:`(\omega_b, \omega_{c}, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
+                :math:`(\omega_b, \omega_c, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
         """
         self.cosmo.set_cosmology(cparam)
         self.pkL.set_cosmology(self.cosmo)
@@ -999,13 +999,8 @@ class base_class(object):
         Returns:
             float: linear bias factor
         """
-        Mp = M * 1.01
-        Mm = M * 0.99
-        logdensp = np.log10(self.mass_to_dens(Mp, redshift))
-        logdensm = np.log10(self.mass_to_dens(Mm, redshift))
-        bp = self.get_bias(logdensp, redshift)
-        bm = self.get_bias(logdensm, redshift)
-        return (bm * 10**logdensm - bp * 10**logdensp) / (10**logdensm - 10**logdensp)
+        logdens = np.log10(self.mass_to_dens(Mth, redshift))
+        return self.get_bias(logdens, redshift)
 
     def get_bias_mass(self, M, redshift):
         """get_bias_mass
@@ -1092,7 +1087,7 @@ class base_class(object):
         Obtain the cosmological parameters currently set to the emulator.
 
         Returns:
-            numpy array: Cosmological parameters :math:`(\omega_b, \omega_{c}, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
+            numpy array: Cosmological parameters :math:`(\omega_b, \omega_c, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
         """
         return self.cosmo.get_cosmology()
 
