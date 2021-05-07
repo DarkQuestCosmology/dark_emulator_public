@@ -6,15 +6,15 @@ from collections import OrderedDict
 import logging
 
 cosm_range = OrderedDict((["omegab", [0.0211375, 0.0233625]],
-                          ["omegam", [0.10782, 0.13178]],
-                          ["Omagel", [0.54752, 0.82128]],
+                          ["omegac", [0.10782, 0.13178]],
+                          ["Omagede", [0.54752, 0.82128]],
                           ["ln(10^10As)", [2.4752, 3.7128]],
                           ["ns", [0.916275, 1.012725]],
                           ["w", [-1.2, -0.8]]))
 
 cosm_range_linear = OrderedDict((["omegab", [0.02025, 0.02425]],
-                                 ["omegam", [0.0998, 0.1398]],
-                                 ["Omagel", [0.4594, 0.9094]],
+                                 ["omegac", [0.0998, 0.1398]],
+                                 ["Omagede", [0.4594, 0.9094]],
                                  ["ln(10^10As)", None],
                                  ["ns", [0.8645, 1.0645]],
                                  ["w", None]))
