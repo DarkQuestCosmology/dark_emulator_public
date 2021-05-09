@@ -1,0 +1,11 @@
+When you want to make any updates on this repo, e.g., fixing a bug or adding a new feature, open an issue on GitHub first. An issue number will be issued. Suppose this issue number is #123. Please create a branch with the issue number on your local machine by
+
+git checkout -b "#123"
+
+. Note that the quotes "" is necessary because just typing # would be interpreted as a comment by bash. This will enable us to track the correspondence between an issue and branch. After updating the code, please commit the change. Note that if you include an issue number in a commit message, GitHub will automatically add a link to the issue page. Then push the branch to the remote repository by
+
+git push -u origin "#123"
+
+. Then make a pull request on GitHub and assign reviewers. After review is done, merge the branch into the main branch. You can then close the issue.
+
+Note that this workflow is adopted from GalSim (https://github.com/GalSim-developers/GalSim).
