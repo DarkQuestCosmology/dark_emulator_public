@@ -740,8 +740,8 @@ class darkemu_x_hod(base_class):
         sigma8 = self.massfunc.sM.get_sigma(M_8mpc)
         ns = cparam[4]
         params = {'flat': True, 'H0': H0, 'Om0': Om0,
-                  'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns}
-        cosmo = colcosmology.setCosmology('myCosmo', params, persistence='')
+                  'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns, 'persistence': ''}
+        cosmo = colcosmology.setCosmology('myCosmo', params)
         c200m = concentration.concentration(M, '200m', z, model=model)
         return c200m
 
