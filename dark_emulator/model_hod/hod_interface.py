@@ -1068,7 +1068,7 @@ class darkemu_x_hod(base_class):
     def _get_wp_rsd(self, rp, redshift, pimax):
         # calculate xi
         r_ref = np.logspace(-3, 3, 512)
-        xi = self.xi_gg(r_ref, redshift)
+        xi = self.get_xi_gg(r_ref, redshift)
         xi_spl = ius(r_ref, xi)
 
         # calculate beta
@@ -1157,7 +1157,7 @@ class darkemu_x_hod(base_class):
             else:
                 r_ref = np.logspace(np.min([self.config["fft_logrmin_1h"], self.config["fft_logrmin_2h"]]), np.max(
                     [self.config["fft_logrmax_1h"], self.config["fft_logrmax_2h"]]), 1024)
-                xi_gg_spl = ius(r_ref, self.xi_gg(r_ref, redshift))
+                xi_gg_spl = ius(r_ref, self.get_xi_gg(r_ref, redshift))
                 t = np.linspace(0, pimax, 1024)
                 dt = t[1]-t[0]
                 wp = list()
