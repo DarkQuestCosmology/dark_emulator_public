@@ -126,7 +126,7 @@ class darkemu_x_hod(base_class):
 
     def set_cosmology(self, cparams):
         cparams = cparams.reshape(1,6)
-        if np.any(self.cosmo.get_cosmology() != cparams.reshape(1, 6)) or np.any(self.cparams_orig != cparams) or (self.initialized == False):
+        if np.any(self.cosmo.get_cosmology() != cparams) or np.any(self.cparams_orig != cparams) or (self.initialized == False):
             self.do_linear_correction, cparams_tmp = cosmo_util.test_cosm_range(
                 cparams, return_edges=True)
             if cosmo_util.test_cosm_range_linear(cparams):
