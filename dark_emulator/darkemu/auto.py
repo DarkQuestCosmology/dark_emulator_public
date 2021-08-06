@@ -85,7 +85,7 @@ class auto_gp:
             s0 = 0
             xia0 = np.array([rbs(-self.logdens_list, -self.logdens_list,
                                  self.xih_mat[:, :, s0, i])(-logdens1, -logdens2, grid=False) for i in range(21)])
-            return xua0
+            return xia0
         elif sindex >= 20:
             s0 = 20
             xia0 = np.array([rbs(-self.logdens_list, -self.logdens_list,
