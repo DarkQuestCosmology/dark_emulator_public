@@ -160,7 +160,7 @@ class darkemu_x_hod(base_class):
     def set_galaxy(self, gparams):
         """set_galaxy
 
-           This class sets galaxy parameter through a dictionary. See `Miyatake et al (2021) <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_ for the definition of galaxy parameters. Here is the list of keys.
+           This method sets galaxy parameter through a dictionary. See `Miyatake et al (2021) <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_ for the definition of galaxy parameters. Here is the list of keys.
 
            - HOD parameters:
 
@@ -189,6 +189,8 @@ class darkemu_x_hod(base_class):
         """
         # gparams includes galaxy-related parameters such as HOD, offcentering, incompleteness, and pi_max.
         if self.gparams != gparams:
+            if self.gparams and self.gparams["sat_dist_type"] != gparams["sat_dist_type"]:
+                self.p_hm_satdist_computed = False
             self.gparams = gparams
             self.HOD_computed = False
             self.ng_computed = False
