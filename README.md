@@ -20,12 +20,12 @@ If the above does not work for you, you may download the source files from this 
 python -m pip install -e .
 ```
 after moving to the top directory of the source tree.
-In that case, you need to install `pyfftlog`, `george` (a software package for the Gaussian process) and colossus
+In that case, you need to install `george` (a software package for the Gaussian process) and colossus
 ```
 conda install -c conda-forge george
-conda install -c conda-forge pyfftlog
 pip install colossus
 ```
+From version XXX, `dark_emulator` uses FFTLog implementation by [Fang et al (2019); arXiv:1911.11947](https://arxiv.org/abs/1911.11947).
 
 ## Usage
 You can then check how Dark Emulator works by running a tutorial notebook at
