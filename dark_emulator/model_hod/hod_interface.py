@@ -1432,7 +1432,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen, dlnrp=dlnrp)[1] )(rp)
+        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen, dlnrp=dlnrp, N_extrap_high=0)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen, self.kr, self.dlnk_1h))(rp)
 
     def get_ds_cen_off(self, rp, redshift, dlnrp=0.0):
@@ -1451,7 +1451,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen_off(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off, dlnrp=dlnrp)[1] )(rp)
+        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off, dlnrp=dlnrp, N_extrap_high=0)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen_off, self.kr, self.dlnk_1h))(rp)
 
     def get_ds_sat(self, rp, redshift, dlnrp=0.0):
