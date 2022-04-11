@@ -1133,6 +1133,7 @@ class darkemu_x_hod(base_class):
             redshift (float): redshift at which the galaxies are located
             pi_max (float): The range of line of sight integral :math:`\pi_{\mathrm{max}}` in :math:`h^{-1}\mathrm{Mpc}`. If None, the projection is performed using the zeroth order Bessel function, i.e., :math:`\pi_{\mathrm{max}}=\infty` (default=None).
             rsd (bool): if True, redshift space distortion is incorporated into the model (default=False).
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected galaxy auto-correlation function in :math:`h^{-1}\mathrm{Mpc}`
@@ -1178,6 +1179,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 1-halo correlation function between central and satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1197,6 +1199,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 1-halo correlation function between satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1216,6 +1219,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 2-halo correlation function between central galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1235,6 +1239,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 2-halo correlation function between central and satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1254,6 +1259,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 2-halo correlation function between satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1400,6 +1406,7 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: excess surface density in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1424,6 +1431,8 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
+
 
         Returns:
             numpy array: excess surface density of (centered) central galaxies in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1443,6 +1452,7 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: excess surface density of off-centered central galaxies in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1462,6 +1472,7 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: excess surface density of satellite galaxies in :math:`h M_\odot \mathrm{pc}^{-2}`
