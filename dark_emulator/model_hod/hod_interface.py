@@ -1123,7 +1123,7 @@ class darkemu_x_hod(base_class):
         wp = np.array(wp)
         return wp
 
-    def get_wp(self, rp, redshift, pimax=None, rsd=False):
+    def get_wp(self, rp, redshift, pimax=None, rsd=False, dlnrp=0.0):
         """get_wp
 
         Compute projected galaxy auto-correlation function :math:`w_\mathrm{p}(r_\mathrm{p})`.
@@ -1149,7 +1149,7 @@ class darkemu_x_hod(base_class):
 
             p_tot_1h = 2.*self.p_1hcs + self.p_1hss
             p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-            wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h, N_extrap_high=0)[1] )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h, N_extrap_high=0)[1] )(rp)
+            wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
             #wp = ius(self.fftlog_1h.r, fftLog.pk2xiproj_J0_fftlog_array(self.fftlog_1h.k, self.fftlog_1h.r, p_tot_1h, self.fftlog_1h.kr, self.fftlog_2h.dlnk))(
             #    rp)+ius(self.fftlog_2h.r, fftLog.pk2xiproj_J0_fftlog_array(self.k_2h, self.r_2h, p_tot_2h, self.kr, self.dlnk_2h))(rp)
         else:
@@ -1170,7 +1170,7 @@ class darkemu_x_hod(base_class):
                 wp = np.array(wp)
         return wp
 
-    def get_wp_1hcs(self, rp, redshift):
+    def get_wp_1hcs(self, rp, redshift, dlnrp=0.0):
         """get_wp_1hcs
 
         Compute projected 1-halo correlation function between central and satellite galaxies :math:`w_\mathrm{p, cen-sat}^\mathrm{1h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1186,10 +1186,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hcs(redshift)
-        wp1hcs = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hcs, N_extrap_high=0)[1] )(rp)
+        wp1hcs = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hcs, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         return wp1hcs
 
-    def get_wp_1hss(self, rp, redshift):
+    def get_wp_1hss(self, rp, redshift, dlnrp=0.0):
         """get_wp_1hss
 
         Compute projected 1-halo correlation function between satellite galaxies :math:`w_\mathrm{p, sat-sat}^\mathrm{1h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1205,10 +1205,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hss(redshift)
-        wp1hss = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hss, N_extrap_high=0)[1] )(rp)
+        wp1hss = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hss, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         return wp1hss
 
-    def get_wp_2hcc(self, rp, redshift):
+    def get_wp_2hcc(self, rp, redshift, dlnrp=0.0):
         """get_wp_2hcc
 
         Compute projected 2-halo correlation function between central galaxies :math:`w_\mathrm{p, cen-cen}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1224,10 +1224,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcc(redshift)
-        wp2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcc, N_extrap_high=0)[1] )(rp)
+        wp2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcc, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         return wp2hcc
 
-    def get_wp_2hcs(self, rp, redshift):
+    def get_wp_2hcs(self, rp, redshift, dlnrp=0.0):
         """get_wp_2hcs
 
         Compute projected 2-halo correlation function between central and satellite galaxies :math:`w_\mathrm{p, cen-sat}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1243,10 +1243,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcs(redshift)
-        wp2hcs = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcs, N_extrap_high=0)[1] )(rp)
+        wp2hcs = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcs, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         return wp2hcs
 
-    def get_wp_2hss(self, rp, redshift):
+    def get_wp_2hss(self, rp, redshift, dlnrp=0.0):
         """get_wp_2hss
 
         Compute projected 2-halo correlation function between satellite galaxies :math:`w_\mathrm{p, sat-sat}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1262,7 +1262,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hss(redshift)
-        wp2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hss, N_extrap_high=0)[1] )(rp)
+        wp2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hss, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         return wp2hss
 
     def get_xi_gg(self, r, redshift):
@@ -1392,7 +1392,7 @@ class darkemu_x_hod(base_class):
         #    self.k_2h, self.r_2h, self.p_2hss, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hss
 
-    def get_ds(self, rp, redshift):
+    def get_ds(self, rp, redshift, dlnrp=0.0):
         """get_ds
 
         Compute weak lensing signal :math:`\Delta\Sigma(r_\mathrm{p})`.
@@ -1411,12 +1411,12 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, self.fftlog_1h.pk2dwp(p_tot, N_extrap_high=0)[1] )(rp)
+        ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, self.fftlog_1h.pk2dwp(p_tot, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         #ds = self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(
         #    self.k_1h, self.r_1h, p_tot, self.kr, self.dlnk_1h))(rp)
         return ds
 
-    def get_ds_cen(self, rp, redshift):
+    def get_ds_cen(self, rp, redshift, dlnrp=0.0):
         """get_ds_cen
 
         Compute weak lensing signal of (centered) central galaxies :math:`\Delta\Sigma_\mathrm{cen}(r_\mathrm{p})`.
@@ -1432,10 +1432,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen)[1] )(rp)
+        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen, self.kr, self.dlnk_1h))(rp)
 
-    def get_ds_cen_off(self, rp, redshift):
+    def get_ds_cen_off(self, rp, redshift, dlnrp=0.0):
         """get_ds_cen_off
 
         Compute weak lensing signal of off-centered central galaxies :math:`\Delta\Sigma_\mathrm{off-cen}(r_\mathrm{p})`.
@@ -1451,10 +1451,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen_off(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off)[1] )(rp)
+        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen_off, self.kr, self.dlnk_1h))(rp)
 
-    def get_ds_sat(self, rp, redshift):
+    def get_ds_sat(self, rp, redshift, dlnrp=0.0):
         """get_ds_sat
 
         Compute weak lensing signal of satellite galaxies :math:`\Delta\Sigma_\mathrm{sat}(r_\mathrm{p})`.
@@ -1470,10 +1470,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_sat(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_sat)[1] )(rp)
+        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_sat, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_sat, self.kr, self.dlnk_1h))(rp)
 
-    def _get_wp_gm(self, rp, redshift):
+    def _get_wp_gm(self, rp, redshift, dlnrp=0.0):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
@@ -1481,7 +1481,7 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot)[1] )(rp)
+        wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot, dlnrp=dlnrp)[1] )(rp)
         return wp
 
     def _get_sigma_gm(self, rp, redshift):
@@ -1564,10 +1564,10 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
         return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_sat)[1] )(r)
 
-    def _get_wp_mm(self, rp, redshift):
+    def _get_wp_mm(self, rp, redshift, dlnrp=0.0):
         xi = self.get_xinl(self.fftlog_2h.r, redshift)
         pk = self.fftlog_2h.xi2pk(xi)[1]
-        wp = self.fftlog_2h.pk2wp(pk, N_extrap_high=0)[1]
+        wp = self.fftlog_2h.pk2wp(pk, N_extrap_high=0, dlnrp=dlnrp)[1]
         #pk = fftLog.xi2pk_fftlog_array(
         #    self.r_2h, self.k_2h, xi, self.kr, self.dlnr_2h)
         #wp = ius(self.fftlog_2h.r, fftLog.pk2xiproj_J0_fftlog_array(
