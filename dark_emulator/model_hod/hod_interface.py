@@ -15,6 +15,8 @@ from ..darkemu.pklin import pklin_gp
 from ..darkemu.cosmo_util import cosmo_class
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
+from scipy.integrate import simps
+from scipy.special import eval_legendre
 from scipy import integrate
 from scipy import special
 from scipy import ndimage
@@ -112,7 +114,7 @@ class darkemu_x_hod(base_class):
         self.gparams = None
         self.initialized = False
         self.cparams_orig = np.zeros((1, 6))
-        super(darkemu_x_hod, self).__init__()
+        super().__init__()
 
     # The following flags tell if dndM and power spectrum should be recomputed when cosmology or redshift is varied.
     def _initialize_cosmology_computation_flags(self):
@@ -141,13 +143,13 @@ class darkemu_x_hod(base_class):
                 logging.info("%s is out of the supported range. Instaead use %s and apply linear correction later." % (
                     self.cparams_orig, cparams))
                 # compute pklin for cparams_orig here
-                super(darkemu_x_hod, self).set_cosmology(self.cparams_orig)
+                super().set_cosmology(self.cparams_orig)
                 self.pm_lin_k_1h_out_of_range = self.get_pklin(self.fftlog_1h.k)
                 self.pm_lin_k_2h_out_of_range = self.get_pklin(self.fftlog_2h.k)
                 self.cosmo_orig = copy.deepcopy(self.cosmo)
                 self.massfunc_cosmo_edge = hmf_gp()
                 self.massfunc_cosmo_edge.set_cosmology(self.cosmo)
-            super(darkemu_x_hod, self).set_cosmology(cparams)
+            super().set_cosmology(cparams)
             if self.do_linear_correction:
                 self.massfunc.set_cosmology(self.cosmo_orig)
             self.rho_m = (1. - cparams[0][2])*rho_cr
@@ -1069,59 +1071,17 @@ class darkemu_x_hod(base_class):
         return self._compute_effective_bias(redshift)
 
     def _get_wp_rsd(self, rp, redshift, pimax):
-        # calculate xi
-        r_ref = np.logspace(-3, 3, 512)
-        xi = self.xi_gg(r_ref, redshift)
-        xi_spl = ius(r_ref, xi)
-
+        # get xi
+        r = np.logspace(-1, 3.0, 300)
+        xi = self.get_xi_gg(r, redshift)
         # calculate beta
         f = self.f_from_z(redshift)
-        #b = 2.118
         b = self._get_effective_bias(redshift)
         beta = f/b
 
-        n = 3
-        J_n = list()
-        for _r in r_ref:
-            t = np.linspace(1e-10, _r, 1024)
-            dt = t[1]-t[0]
-            J_n.append(1./_r**n*integrate.trapz(t**(n-1.)*xi_spl(t), dx=dt))
-        J_3 = np.array(J_n)
+        wp_rsd = _get_wp_aniso(r, xi, beta, rp, pimax)
 
-        n = 5
-        J_n = list()
-        for _r in r_ref:
-            t = np.linspace(1e-10, _r, 1024)
-            dt = t[1]-t[0]
-            J_n.append(1./_r**n*integrate.trapz(t**(n-1.)*xi_spl(t), dx=dt))
-        J_5 = np.array(J_n)
-
-        xi_0 = (1.+2./3.*beta+1./5.*beta**2)*xi
-        xi_2 = (4./3.*beta+4./7.*beta**2)*(xi-3.*J_3)
-        xi_4 = 8./35.*beta**2*(xi+15./2.*J_3-35./2.*J_5)
-
-        r_pi = np.logspace(-3, np.log10(pimax), 512)
-        rp, r_pi = np.meshgrid(rp, r_pi, indexing='ij')
-
-        s = np.sqrt(rp**2+r_pi**2)
-
-        mu = r_pi/s
-
-        l0 = special.eval_legendre(0, mu)
-        l2 = special.eval_legendre(2, mu)
-        l4 = special.eval_legendre(4, mu)
-
-        xi_s = ius(r_ref, xi_0)(s)*l0 + ius(r_ref, xi_2)(s) * \
-            l2 + ius(r_ref, xi_4)(s)*l4
-
-        xi_s_spl = rbs(rp[:, 0], r_pi[0], xi_s)
-
-        wp = list()
-        for _r in rp:
-            wp.append(2*integrate.quad(lambda t: xi_s_spl(_r, t)
-                                       [0][0], 0, pimax, epsabs=1e-4)[0])
-        wp = np.array(wp)
-        return wp
+        return wp_rsd
 
     def get_wp(self, rp, redshift, pimax=None, rsd=False, dlnrp=0.0):
         """get_wp
@@ -1161,7 +1121,7 @@ class darkemu_x_hod(base_class):
             else:
                 r_ref = np.logspace(np.min([self.config["fft_logrmin_1h"], self.config["fft_logrmin_2h"]]), np.max(
                     [self.config["fft_logrmax_1h"], self.config["fft_logrmax_2h"]]), 1024)
-                xi_gg_spl = ius(r_ref, self.xi_gg(r_ref, redshift))
+                xi_gg_spl = ius(r_ref, self.get_xi_gg(r_ref, redshift))
                 t = np.linspace(0, pimax, 1024)
                 dt = t[1]-t[0]
                 wp = list()
@@ -1294,7 +1254,7 @@ class darkemu_x_hod(base_class):
 
         p_tot_1h = 2.*self.p_1hcs + self.p_1hss
         p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-        xi_gg = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h)[1] )(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h)[1] )(r)
+        xi_gg = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0)[1] )(r)
         return xi_gg
 
     def get_xi_gg_1hcs(self, r, redshift):
@@ -1792,3 +1752,55 @@ def _compute_tinker10_bias(redshift, Mh, massfunc):
     nu = delta_c/sigM
     b = 1.-A*nu**a/(nu**a+delta_c**a) + B*nu**b + C*nu**c
     return b
+
+def _get_Jn(r, xi, n, nmin=2000):
+    # Equation (55) of arxiv: 1206.6890. Used for xi calcuration inclusing Kaiser effec.
+    # 1500 is enough to achieve 1% precision over R in [1, 100] Mpc/h
+    if r.size < nmin:
+        xi_interp = ius(r, xi)
+        r2 = np.logspace(np.log10(r.min()), np.log10(r.max()), nmin)
+        xi2 = xi_interp(r2)
+        Jn2 = _get_Jn(r2, xi2, n)
+        return ius(r2, Jn2)(r)
+    else:
+        return np.cumsum(xi*r**n)*np.diff(np.log(r))[0]/r**n
+
+def _get_wp_aniso(r, xi, beta, rp_in, pimax):
+    # Numerator of Eq. (48) of arxiv: 1206.6890 using mutipole expansion of anisotropic xi including Kaiser effect in Eq. (51) of the same paper.
+    dlnrp_min = 0.01 # bin size of dlnrp enough to obtain 0.01 %
+    if np.log10(rp_in[1]/rp_in[0]) < dlnrp_min:
+        print('Input rp is dense. Using more sparse rp to calculate wp_aniso.')
+        # calcurate wp_aniso on more sparse rp and then interpolate it to obtain wp_aniso on rp_in.
+        rp = 10**np.arange(0, 2.0, dlnrp_min)
+        interpolate = True
+    else:
+        rp = rp_in
+        interpolate = False
+
+    rpi = np.logspace(-3, np.log10(pimax), 300) # Ok binning for 1% accuracy.
+
+    rp2, rpi2 = np.meshgrid(rp, rpi)
+
+    s = (rp2**2+rpi2**2)**0.5
+    mu= rpi2/s
+
+    J1 = ius(r, xi)(s) # formal
+    J3 = ius(r, _get_Jn(r, xi, 3))(s)
+    J5 = ius(r, _get_Jn(r, xi, 5))(s)
+
+    xi0 = (1+2.0/3.0*beta+1.0/5.0*beta**2)*J1
+    xi2 = (4.0/3.0*beta+4.0/7.0*beta**2)*(J1-3*J3)
+    xi4 = 8.0/35.0*beta**2*(J1+15/2.0*J3-35/2*J5)
+
+    p0 = 1
+    p2 = eval_legendre(2, mu)
+    p4 = eval_legendre(4, mu)
+
+    xi_aniso = 2*(xi0*p0+xi2*p2+xi4*p4)
+
+    wp_aniso = simps(xi_aniso, rpi, axis=0)
+
+    if interpolate:
+        wp_aniso = ius(rp, wp_aniso)(rp_in)
+    
+    return wp_aniso
