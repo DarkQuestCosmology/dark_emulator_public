@@ -279,9 +279,9 @@ def pk2dwp(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width
     dwp /= 2.0*np.pi
     return rp, dwp
 
-def pk2xi(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, kr=1):
+def pk2xi(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, kr=1, l=0):
     myfftlog = fftlog(k, pk*k**3, nu, N_extrap_low, N_extrap_high, N_pad, kr)
-    r, xi = myfftlog.fftlog(0)
+    r, xi = myfftlog.fftlog(l)
     xi /= 2*np.pi**2
     return r, xi
 
@@ -309,8 +309,8 @@ class fftbase(object):
         rp, dwp = pk2dwp(self.k, pk, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr, dlnrp=dlnrp)
         return rp, dwp
 
-    def pk2xi(self, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0):
-        r, xi = pk2xi(self.k, pk, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr)
+    def pk2xi(self, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, l=0):
+        r, xi = pk2xi(self.k, pk, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr, l=l)
         return r, xi
 
     def xi2pk(self, xi, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0):

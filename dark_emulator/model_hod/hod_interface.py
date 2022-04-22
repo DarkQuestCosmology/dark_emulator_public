@@ -1071,15 +1071,21 @@ class darkemu_x_hod(base_class):
         return self._compute_effective_bias(redshift)
 
     def _get_wp_rsd(self, rp, redshift, pimax):
-        # get xi
-        r = np.logspace(-1, 3.0, 200)
-        xi = self.get_xi_gg(r, redshift)
+        # get xi, and multipoles, xi2, xi4
+        r = np.logspace(-1, 3.0, 1000)
+        xi0 = self.get_xi_gg(r, redshift)
+
+        p_tot_1h = 2.*self.p_1hcs + self.p_1hss
+        p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
+        xi2 =-ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
+        xi4 = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
+
         # calculate beta
         f = self.f_from_z(redshift)
         b = self._get_effective_bias(redshift)
         beta = f/b
 
-        wp_rsd = _get_wp_aniso(r, xi, beta, rp, pimax)
+        wp_rsd = _get_wp_aniso(r, xi0, xi2, xi4, beta, rp, pimax)
 
         return wp_rsd
 
@@ -1765,7 +1771,7 @@ def _get_Jn(r, xi, n, nmin=2000):
     else:
         return np.cumsum(xi*r**n)*np.diff(np.log(r))[0]/r**n
 
-def _get_wp_aniso(r, xi, beta, rp_in, pimax):
+def _get_wp_aniso(r, xi0, xi2, xi4, beta, rp_in, pimax):
     # Numerator of Eq. (48) of arxiv: 1206.6890 using mutipole expansion of anisotropic xi including Kaiser effect in Eq. (51) of the same paper.
     dlnrp_min = 0.01 # bin size of dlnrp enough to obtain 0.01 %
     if np.log10(rp_in[1]/rp_in[0]) < dlnrp_min:
@@ -1784,19 +1790,15 @@ def _get_wp_aniso(r, xi, beta, rp_in, pimax):
     s = (rp2**2+rpi2**2)**0.5
     mu= rpi2/s
 
-    J1 = ius(r, xi)(s) # formal
-    J3 = ius(r, _get_Jn(r, xi, 3))(s)
-    J5 = ius(r, _get_Jn(r, xi, 5))(s)
-
-    xi0 = (1+2.0/3.0*beta+1.0/5.0*beta**2)*J1
-    xi2 = (4.0/3.0*beta+4.0/7.0*beta**2)*(J1-3*J3)
-    xi4 = 8.0/35.0*beta**2*(J1+15/2.0*J3-35/2*J5)
+    xi0s = (1+2.0/3.0*beta+1.0/5.0*beta**2)*ius(r, xi0)(s)
+    xi2s = (4.0/3.0*beta+4.0/7.0*beta**2)*ius(r, xi2)(s)
+    xi4s = 8.0/35.0*beta**2*ius(r, xi4)(s)
 
     p0 = 1
     p2 = eval_legendre(2, mu)
     p4 = eval_legendre(4, mu)
 
-    xi_aniso = 2*(xi0*p0+xi2*p2+xi4*p4)
+    xi_aniso = 2*(xi0s*p0+xi2s*p2+xi4s*p4)
 
     wp_aniso = simps(xi_aniso, rpi, axis=0)
 
