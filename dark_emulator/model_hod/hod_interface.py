@@ -1072,7 +1072,7 @@ class darkemu_x_hod(base_class):
 
     def _get_wp_rsd(self, rp, redshift, pimax):
         # get xi
-        r = np.logspace(-1, 3.0, 300)
+        r = np.logspace(-1, 3.0, 200)
         xi = self.get_xi_gg(r, redshift)
         # calculate beta
         f = self.f_from_z(redshift)
@@ -1771,7 +1771,7 @@ def _get_wp_aniso(r, xi, beta, rp_in, pimax):
     if np.log10(rp_in[1]/rp_in[0]) < dlnrp_min:
         print('Input rp is dense. Using more sparse rp to calculate wp_aniso.')
         # calcurate wp_aniso on more sparse rp and then interpolate it to obtain wp_aniso on rp_in.
-        rp = 10**np.arange(0, 2.0, dlnrp_min)
+        rp = 10**np.arange(np.log10(rp_in.min()), np.log10(rp_in.max()), dlnrp_min)
         interpolate = True
     else:
         rp = rp_in
