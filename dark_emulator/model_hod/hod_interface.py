@@ -1759,18 +1759,6 @@ def _compute_tinker10_bias(redshift, Mh, massfunc):
     b = 1.-A*nu**a/(nu**a+delta_c**a) + B*nu**b + C*nu**c
     return b
 
-def _get_Jn(r, xi, n, nmin=2000):
-    # Equation (55) of arxiv: 1206.6890. Used for xi calcuration inclusing Kaiser effec.
-    # 1500 is enough to achieve 1% precision over R in [1, 100] Mpc/h
-    if r.size < nmin:
-        xi_interp = ius(r, xi)
-        r2 = np.logspace(np.log10(r.min()), np.log10(r.max()), nmin)
-        xi2 = xi_interp(r2)
-        Jn2 = _get_Jn(r2, xi2, n)
-        return ius(r2, Jn2)(r)
-    else:
-        return np.cumsum(xi*r**n)*np.diff(np.log(r))[0]/r**n
-
 def _get_wp_aniso(r, xi0, xi2, xi4, beta, rp_in, pimax):
     # Numerator of Eq. (48) of arxiv: 1206.6890 using mutipole expansion of anisotropic xi including Kaiser effect in Eq. (51) of the same paper.
     dlnrp_min = 0.01 # bin size of dlnrp enough to obtain 0.01 %
