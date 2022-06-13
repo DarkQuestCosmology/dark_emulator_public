@@ -191,7 +191,7 @@ class base_class(object):
     def _get_xinl_tree(self, xs, redshift):
         ks = np.logspace(-5, 2, 300)
         pk = self._get_pkmatter_tree_spline(redshift)(ks)
-        r, xi = fftlog.pk2xi(ks, pk, 1.01, N_extrap_low=1024, N_extrap_high=0)
+        r, xi = fftlog.pk2xi(ks, pk, 1.01)
         return iuspline(r, xi)(xs)
 
     def _get_xinl_direct(self, xs, z):
@@ -227,7 +227,7 @@ class base_class(object):
         """
         xs = np.logspace(-3, 3, 2000)
         xinl = self.get_xinl(xs, z)
-        ks, pk = fftlog.xi2pk(xs, xinl, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        ks, pk = fftlog.xi2pk(xs, xinl, 1.01, N_extrap_low=1024)
         return iuspline(ks, pk)(k)
 
     def get_pklin(self, k):
@@ -269,7 +269,7 @@ class base_class(object):
         pm_lin = self.get_pklin(ks)
         ph_tree = g1 * g2 * pm_lin
         
-        x, xi = fftlog.pk2xi(ks, ph_tree, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        x, xi = fftlog.pk2xi(ks, ph_tree, 1.01, N_extrap_low=1024)
         return iuspline(x, xi)(xs)
 
     def _get_xiauto_direct(self, xs, logdens1, logdens2, redshift):
@@ -404,7 +404,7 @@ class base_class(object):
         xs = np.logspace(-3,3,4000)
         xihh = self.xi_auto.get(xs,redshift,logdens1,logdens2)
         
-        k, pk = fftlog.xi2pk(xs, xihh, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xihh, 1.01)
         
         return iuspline(k, pk)(ks)
 
@@ -438,7 +438,7 @@ class base_class(object):
                 xi_dir = self._get_xiauto_direct(xs,-5.75,-5.75,redshift) * self.g1.bias_ratio(redshift,logdens1)*self.g1.bias_ratio(redshift,logdens2)
                 xi_tot = xi_dir * np.exp(-(xs/rswitch)**4) + xi_tree * (1-np.exp(-(xs/rswitch)**4))
         
-        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01)
         return iuspline(k, pk)(ks)
 
     def _get_phh_tree_cut(self,ks,logdens1,logdens2,redshift):
@@ -447,7 +447,7 @@ class base_class(object):
         rswitch = min(60.,0.5 * self.cosmo.get_BAO_approx())
         xi_tot = xi_tree * (1-np.exp(-(xs/rswitch)**4))
 
-        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01)
         return iuspline(k, pk)(ks)
 
     def _get_phh_direct_cut(self,ks,logdens1,logdens2,redshift):
@@ -465,7 +465,7 @@ class base_class(object):
         else:
                 xi_dir = self._get_xiauto_direct(xs,-5.75,-5.75,redshift) * self.g1.bias_ratio(redshift,logdens1)*self.g1.bias_ratio(redshift,logdens2)
                 xi_tot = xi_dir * np.exp(-(xs/rswitch)**4)
-        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01)
         return iuspline(k, pk)(ks)
 
 
@@ -533,13 +533,13 @@ class base_class(object):
             Returns:
                 numpy array: projected halo correlation function in :math:`[h^{-1}\mathrm{Mpc}]`
         """
-        xs = np.logspace(-4, 4, 1000)
+        xs = np.logspace(-3, 3.0, 2048)
         xi_auto = self.get_xiauto(xs, logdens1, logdens2, redshift)
 
-        k, pk = fftlog.xi2pk(xs, xi_auto, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi_auto, 1.01)
         
-        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
-        return iuspline(x, wp)(R2d)
+        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=2024)
+        return iuspline(rp, wp)(R2d)
 
     def get_wauto_cut(self, R2d, logdens1, logdens2, redshift, pimax, integration="quad"):
         """get_wauto_cut
@@ -713,12 +713,12 @@ class base_class(object):
         g1_dm = self.g1.get_dm(ks, redshift)
         pm_lin = self.get_pklin(ks)
         return iuspline(ks, g1*g1_dm * pm_lin)
-
+        
     def _get_xicross_tree(self, xs, logdens, redshift):
         ks = np.logspace(-4, 4, 1024)
         pk = self._get_pkcross_tree_spline(logdens, redshift)(ks)
 
-        x, xi = fftlog.pk2xi(ks, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        x, xi = fftlog.pk2xi(ks, pk, 1.01, N_extrap_low=1024)
         return iuspline(x, xi)(xs)
 
     def _get_xicross_direct(self, xs, logdens, redshift):
@@ -788,7 +788,7 @@ class base_class(object):
     def _get_phm_direct(self,ks,logdens,redshift):
         xs = np.logspace(-3,3,2000)
         xi = self.xi_cross.get(xs,redshift,logdens)
-        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024)
         return iuspline(k, pk)(ks)
 
     def get_phm(self,ks,logdens,redshift):
@@ -810,7 +810,7 @@ class base_class(object):
         rswitch = min(60.,0.5 * self.cosmo.get_BAO_approx())
         xi = xi_dir * np.exp(-(xs/rswitch)**4) + xi_tree * (1-np.exp(-(xs/rswitch)**4))
         
-        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi, 1.01)
         return iuspline(k, pk)(ks)
 
     def _get_phm_tree_cut(self,ks,logdens,redshift):
@@ -819,7 +819,7 @@ class base_class(object):
         rswitch = min(60.,0.5 * self.cosmo.get_BAO_approx())
         xi = xi_tree * (1-np.exp(-(xs/rswitch)**4))
 
-        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi, 1.01)
         return iuspline(k, pk)(ks)
 
     def _get_phm_direct_cut(self,ks,logdens,redshift):
@@ -828,7 +828,7 @@ class base_class(object):
         rswitch = min(60.,0.5 * self.cosmo.get_BAO_approx())
         xi = xi_dir * np.exp(-(xs/rswitch)**4)
 
-        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi, 1.01)
         return iuspline(k, pk)(ks)
 
     def get_phm_massthreshold(self,ks,Mthre,redshift):
@@ -872,14 +872,14 @@ class base_class(object):
         k = np.logspace(-5, 5, 1024)
         pk = self._get_pkcross_tree_spline(logdens, redshift)(k)
 
-        rp, dwp = fftlog.pk2dwp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        rp, dwp = fftlog.pk2dwp(k, pk, 1.01)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, dwp)(R2d)
 
     def _get_DeltaSigma_direct(self, R2d, logdens, redshift):
         xs = np.logspace(-3, 3, 2000)
         xi = self._get_xicross_direct(xs, logdens, redshift)
-        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024, N_extrap_high=1024)
-        rp, dwp = fftlog.pk2dwp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi, 1.01)
+        rp, dwp = fftlog.pk2dwp(k, pk, 1.01)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, dwp)(R2d)
 
     def get_DeltaSigma(self, R2d, logdens, redshift):
@@ -899,9 +899,9 @@ class base_class(object):
         xs = np.logspace(-3, 3, 2000)
         xi_tot = self.get_xicross(xs, logdens, redshift)
 
-        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01)
         
-        rp, dwp = fftlog.pk2dwp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        rp, dwp = fftlog.pk2dwp(k, pk, 1.01)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, dwp)(R2d)
 
     def get_DeltaSigma_massthreshold(self, R2d, Mthre, redshift):
@@ -945,16 +945,23 @@ class base_class(object):
         k = np.logspace(-5,5,1024)
         pk = self._get_pkcross_tree_spline(logdens, redshift)(k)
 
-        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        rp, wp = fftlog.pk2wp(k, pk, 1.01)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
 
     def _get_Sigma_direct(self, R2d, logdens, redshift):
-        xs = np.logspace(-3, 3, 2000)
+        xs = np.logspace(-2, 2, 2000)
         xi = self._get_xicross_direct(xs, logdens, redshift)
 
-        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi, 1.01)
+
+        import matplotlib.pyplot as plt
+        plt.figure()
+        plt.loglog(k, k**3*pk)
+
+        plt.figure()
+        plt.loglog(xs, xs**3*xi)
         
-        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=2048)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
 
     def get_Sigma(self, R2d, logdens, redshift):
@@ -971,11 +978,11 @@ class base_class(object):
             numpy array: surface mass density in :math:`[h M_\odot \mathrm{pc}^{-2}]`
         """
         xs = np.logspace(-3, 3, 2000)
-        xi_tot = self._get_xicross(xs, logdens, redshift)
+        xi_tot = self.get_xicross(xs, logdens, redshift)
         
-        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01)
         
-        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=1024, N_extrap_high=1024)
+        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=2048, c_window_width=0.3)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
 
     def get_Sigma_massthreshold(self, R2d, Mthre, redshift):

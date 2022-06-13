@@ -261,7 +261,7 @@ def g_l_smooth(l,z_array, binwidth_dlny, alpha_pow):
 	return gl
 
 
-def pk2wp(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, kr=1, dlnrp=0.0, D=2):
+def pk2wp(k, pk, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, kr=1, dlnrp=0.0, D=2):
     myhankel = hankel(k, pk*k**2, nu, N_extrap_low, N_extrap_high, N_pad, kr)
     if dlnrp == 0.0:
         rp, wp = myhankel.hankel(0)
@@ -270,7 +270,7 @@ def pk2wp(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=
     wp /= 2.0*np.pi
     return rp, wp
 
-def pk2dwp(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, kr=1, dlnrp=0.0, D=2):
+def pk2dwp(k, pk, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, kr=1, dlnrp=0.0, D=2):
     myhankel = hankel(k, pk*k**2, nu, N_extrap_low, N_extrap_high, N_pad, kr)
     if dlnrp == 0.0:
         rp, dwp = myhankel.hankel(2)
@@ -279,13 +279,13 @@ def pk2dwp(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width
     dwp /= 2.0*np.pi
     return rp, dwp
 
-def pk2xi(k, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, kr=1, l=0):
+def pk2xi(k, pk, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, kr=1, l=0):
     myfftlog = fftlog(k, pk*k**3, nu, N_extrap_low, N_extrap_high, N_pad, kr)
     r, xi = myfftlog.fftlog(l)
     xi /= 2*np.pi**2
     return r, xi
 
-def xi2pk(r, xi, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, kr=1):
+def xi2pk(r, xi, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, kr=1):
     myfftlog = fftlog(r, xi*r**3, nu, N_extrap_low, N_extrap_high, N_pad, kr)
     k, pk = myfftlog.fftlog(0)
     pk *= 4.0*np.pi
@@ -301,18 +301,18 @@ class fftbase(object):
         self.r = np.logspace(self.fft_logrmin, self.fft_logrmax, int(1024*self.fft_num))
         self.k = kr/self.r[::-1]
         
-    def pk2wp(self, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, dlnrp=0.0):
+    def pk2wp(self, pk, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, dlnrp=0.0):
         rp, wp = pk2wp(self.k, pk, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr, dlnrp=dlnrp)
         return rp, wp
 
-    def pk2dwp(self, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, dlnrp=0.0):
+    def pk2dwp(self, pk, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, dlnrp=0.0):
         rp, dwp = pk2dwp(self.k, pk, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr, dlnrp=dlnrp)
         return rp, dwp
 
-    def pk2xi(self, pk, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0, l=0):
+    def pk2xi(self, pk, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, l=0):
         r, xi = pk2xi(self.k, pk, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr, l=l)
         return r, xi
 
-    def xi2pk(self, xi, nu=1.01, N_extrap_low=1024, N_extrap_high=1024, c_window_width=0.25, N_pad=0):
+    def xi2pk(self, xi, nu=1.01, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0):
         k, pk = xi2pk(self.r, xi, nu, N_extrap_low, N_extrap_high, N_pad=N_pad, kr=self.kr)
         return k, pk
