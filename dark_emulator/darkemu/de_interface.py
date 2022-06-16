@@ -536,7 +536,7 @@ class base_class(object):
         xs = np.logspace(-3, 3.0, 2048)
         xi_auto = self.get_xiauto(xs, logdens1, logdens2, redshift)
 
-        k, pk = fftlog.xi2pk(xs, xi_auto, 1.01)
+        k, pk = fftlog.xi2pk(xs, xi_auto, 1.01, N_extrap_high=1024)
         
         rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=2024)
         return iuspline(rp, wp)(R2d)
@@ -809,8 +809,8 @@ class base_class(object):
         xi_tree = self._get_xicross_tree(xs,logdens,redshift)
         rswitch = min(60.,0.5 * self.cosmo.get_BAO_approx())
         xi = xi_dir * np.exp(-(xs/rswitch)**4) + xi_tree * (1-np.exp(-(xs/rswitch)**4))
-        
-        k, pk = fftlog.xi2pk(xs, xi, 1.01)
+
+        k, pk = fftlog.xi2pk(xs, xi, 1.01, N_extrap_high=1024)
         return iuspline(k, pk)(ks)
 
     def _get_phm_tree_cut(self,ks,logdens,redshift):
@@ -953,13 +953,6 @@ class base_class(object):
         xi = self._get_xicross_direct(xs, logdens, redshift)
 
         k, pk = fftlog.xi2pk(xs, xi, 1.01)
-
-        import matplotlib.pyplot as plt
-        plt.figure()
-        plt.loglog(k, k**3*pk)
-
-        plt.figure()
-        plt.loglog(xs, xs**3*xi)
         
         rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=2048)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
@@ -980,9 +973,9 @@ class base_class(object):
         xs = np.logspace(-3, 3, 2000)
         xi_tot = self.get_xicross(xs, logdens, redshift)
         
-        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01)
+        k, pk = fftlog.xi2pk(xs, xi_tot, 1.01, N_extrap_high=1024)
         
-        rp, wp = fftlog.pk2wp(k, pk, 1.01, N_extrap_low=2048, c_window_width=0.3)
+        rp, wp = fftlog.pk2wp(k, pk, 1.01,N_extrap_low=2048)#,c_window_width=0)#,N_extrap_low=2048,c_window_width=0)#, N_extrap_low=2048, c_window_width=0.3)
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
 
     def get_Sigma_massthreshold(self, R2d, Mthre, redshift):
