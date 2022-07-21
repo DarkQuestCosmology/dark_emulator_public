@@ -109,6 +109,7 @@ class darkemu_x_hod(base_class):
 
         self.k_1h_mat = np.tile(self.fftlog_1h.k, (len(self.Mh), 1))
         self.k_2h_mat = np.tile(self.fftlog_2h.k, (len(self.Mh), 1))
+        self.k_2h_mat = np.tile(self.fftlog_2h.k, (len(self.Mh), 1))
         self.Mh_mat = np.tile(self.Mh, (len(self.fftlog_2h.k), 1)).transpose()
 
         self.gparams = None
@@ -504,7 +505,8 @@ class darkemu_x_hod(base_class):
                 ph_tree = numer/denom
                 #p_hh_tree[i,j] = ph_tree
 
-                xi_tree = self.fftlog_2h.pk2xi(ph_tree, N_extrap_high=0)[1]
+                xi_tree = fftlog.pk2xi(self.fftlog_2h.k, ph_tree, 1.01, N_extrap_low=1024)[1]
+                #xi_tree = self.fftlog_2h.pk2xi(ph_tree, N_extrap_high=0)[1]
                 #xi_tree = fftLog.pk2xi_fftlog_array(
                 #    self.k_2h, self.r_2h, ph_tree, self.kr, self.dlnk_2h)
                 xi_hh = xi_dir * connection_factor_1 + xi_tree * connection_factor_2
@@ -512,7 +514,7 @@ class darkemu_x_hod(base_class):
                 if self.do_linear_correction:
                     xi_hh *= bias_correction[i]*bias_correction[j]
 
-                p_hh[i, j] = self.fftlog_2h.xi2pk(xi_hh, N_extrap_high=0)[1]
+                p_hh[i, j] = fftlog.xi2pk(self.fftlog_2h.k, xi_hh, 1.01, N_extrap_high=1024)[1]
                 #p_hh[i, j] = fftLog.xi2pk_fftlog_array(
                 #    self.r_2h, self.k_2h, xi_hh, self.kr, self.dlnr_2h)
                 if i != j:
@@ -670,7 +672,7 @@ class darkemu_x_hod(base_class):
 
         p_hm = np.zeros((len(logdens), len(self.fftlog_1h.k)))
         for i in range(len(logdens)):
-            p_hm[i] = self.fftlog_1h.xi2pk(self.xi_hm[i])[1]
+            p_hm[i] = self.fftlog_1h.xi2pk(self.xi_hm[i], 1.01, N_extrap_high=1024)[1]
             #p_hm[i] = fftLog.xi2pk_fftlog_array(
             #    self.r_1h, self.k_1h, self.xi_hm[i], self.kr, self.dlnr_1h)
             if "baryon" in list(self.gparams.keys()):
@@ -731,7 +733,20 @@ class darkemu_x_hod(base_class):
         self.p_hm_dist_2h = np.array(
             [ius(self.fftlog_1h.k, p_hm_dist[i], ext=3)(self.fftlog_2h.k) for i in range(len(self.Mh))])
 
-    def _concentration(self, M, z, model='diemer15'):
+    def _concentration(self, cosmo, M, z, model='diemer15'):
+        c200m = concentration.concentration(M, '200m', z, model=model)
+        return c200m
+
+    def _compute_p_hm_satdist_NFW(self, redshift):
+        R200 = (3*self._convert_dens_to_mass(10**np.array(self.xi_cross.logdens_list), redshift,
+                                    integration=self.config["hmf_int_algorithm"])/(4.*np.pi*self.rho_m)/200.)**(1./3.)
+
+        p_hm_dist = list()
+        if "sat_dist_Rc" in list(self.gparams.keys()):
+            Rc = self.gparams["sat_dist_Rc"]
+        else:
+            Rc = 1.0
+
         if self.do_linear_correction:
             cparam = self.cparams_orig[0]
         else:
@@ -746,21 +761,9 @@ class darkemu_x_hod(base_class):
         ns = cparam[4]
         params = {'flat': True, 'H0': H0, 'Om0': Om0,
                   'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns}
-        cosmo = colcosmology.setCosmology('myCosmo', params)
-        c200m = concentration.concentration(M, '200m', z, model=model)
-        return c200m
-
-    def _compute_p_hm_satdist_NFW(self, redshift):
-        R200 = (3*self._convert_dens_to_mass(10**np.array(self.xi_cross.logdens_list), redshift,
-                                    integration=self.config["hmf_int_algorithm"])/(4.*np.pi*self.rho_m)/200.)**(1./3.)
-
-        p_hm_dist = list()
-        if "sat_dist_Rc" in list(self.gparams.keys()):
-            Rc = self.gparams["sat_dist_Rc"]
-        else:
-            Rc = 1.0
+        cosmo = colcosmology.setCosmology('myCosmo', params)        
         for i, (_M, _R200) in enumerate(zip(self.Mh, self.R200)):
-            c200 = self._concentration(_M, redshift, self.config["c-M_relation"])  # , model = 'duffy08')
+            c200 = self._concentration(cosmo, _M, redshift, self.config["c-M_relation"])  # , model = 'duffy08')
             if c200 == -1:
                 #raise RuntimeError("concentration cannot be computed at (M,z) = (%e,%e)" % (_M, redshift))
                 if self.do_linear_correction:
@@ -911,6 +914,8 @@ class darkemu_x_hod(base_class):
             self._compute_ng()
         if self.p_hh_computed == False:
             self._compute_p_hh(redshift)
+        if self.p_hm_satdist_computed == False:
+            self._compute_p_hm_satdist(redshift)
 
         poff = self.gparams["poff"]
         Roff = self.gparams["Roff"]
@@ -1077,8 +1082,10 @@ class darkemu_x_hod(base_class):
 
         p_tot_1h = 2.*self.p_1hcs + self.p_1hss
         p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-        xi2 =-ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
-        xi4 = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
+        xi2 =-ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
+        xi4 = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
+        #xi2 =-ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
+        #xi4 = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
 
         # calculate beta
         f = self.f_from_z(redshift)
@@ -1116,7 +1123,8 @@ class darkemu_x_hod(base_class):
 
             p_tot_1h = 2.*self.p_1hcs + self.p_1hss
             p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-            wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+            wp = ius( self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, p_tot_1h, N_extrap_low=1024, dlnrp=dlnrp)[1] )(rp) + ius(self.fftlog_2h.k, fftlog.pk2wp(self.fftlog_2h.k, p_tot_2h, N_extrap_low=2048, dlnrp=dlnrp)[1] )(rp)
+            #wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
             #wp = ius(self.fftlog_1h.r, fftLog.pk2xiproj_J0_fftlog_array(self.fftlog_1h.k, self.fftlog_1h.r, p_tot_1h, self.fftlog_1h.kr, self.fftlog_2h.dlnk))(
             #    rp)+ius(self.fftlog_2h.r, fftLog.pk2xiproj_J0_fftlog_array(self.k_2h, self.r_2h, p_tot_2h, self.kr, self.dlnk_2h))(rp)
         else:
@@ -1154,7 +1162,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hcs(redshift)
-        wp1hcs = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hcs, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #x, y, = fftlog.pk2wp(self.fftlog_1h.k, self.p_1hcs, 1.01, N_extrap_low=2048, dlnrp = dlnrp)
+        wp1hcs = ius(self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, self.p_1hcs, 1.01, N_extrap_low=2048, dlnrp = dlnrp)[1] )(rp)
         return wp1hcs
 
     def get_wp_1hss(self, rp, redshift, dlnrp=0.0):
@@ -1174,7 +1183,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hss(redshift)
-        wp1hss = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hss, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        wp1hss = ius( self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, self.p_1hss, 1.01, N_extrap_low=2048, dlnrp = dlnrp)[1] )(rp)
+        #wp1hss = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hss, N_extrap_low=1024, dlnrp=dlnrp)[1] )(rp)
         return wp1hss
 
     def get_wp_2hcc(self, rp, redshift, dlnrp=0.0):
@@ -1194,7 +1204,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcc(redshift)
-        wp2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcc, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        wp2hcc = ius( self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hcc, 1.01, N_extrap_low=2048)[1] )(rp)
+        #wp2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcc, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hcc
 
     def get_wp_2hcs(self, rp, redshift, dlnrp=0.0):
@@ -1214,7 +1225,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcs(redshift)
-        wp2hcs = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcs, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        wp2hcs = ius( self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hcs, 1.01, N_extrap_low=2048)[1] )(rp)
+        #wp2hcs = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcs, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hcs
 
     def get_wp_2hss(self, rp, redshift, dlnrp=0.0):
@@ -1234,7 +1246,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hss(redshift)
-        wp2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hss, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        wp2hss = ius( self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hss, 1.01, N_extrap_low=2048)[1] )(rp)
+        #wp2hss = ius(self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hss, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hss
 
     def get_xi_gg(self, r, redshift):
@@ -1260,7 +1273,8 @@ class darkemu_x_hod(base_class):
 
         p_tot_1h = 2.*self.p_1hcs + self.p_1hss
         p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-        xi_gg = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0)[1] )(r)
+        xi_gg = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_low=2048)[1])(r) + ius(self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_low=2048)[1] )(r)
+        #xi_gg = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0)[1] )(r)
         return xi_gg
 
     def get_xi_gg_1hcs(self, r, redshift):
@@ -1279,7 +1293,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hcs(redshift)
-        xi_gg_1hcs = ius(self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_1hcs)[1] )(r)
+        xi_gg_1hcs = ius(self.fftlog_1h.r,fftlog.pk2xi(self.fftlog_1h.k, self.p_1hcs, N_extrap_low=1024)[1] )(r)
         return xi_gg_1hcs
 
     def get_xi_gg_1hss(self, r, redshift):
@@ -1298,7 +1312,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hss(redshift)
-        xi_gg_1hss = ius(self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_1hss)[1] )(r)
+        xi_gg_1hss = ius(self.fftlog_1h.r,fftlog.pk2xi(self.fftlog_1h.k, self.p_1hss, N_extrap_low=2048)[1] )(r)
+        #xi_gg_1hss = ius(self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_1hss)[1] )(r)
         return xi_gg_1hss
 
     def get_xi_gg_2hcc(self, rp, redshift):
@@ -1317,7 +1332,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcc(redshift)
-        xi_gg_2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hcc)[1] )(rp)
+        xi_gg_2hcc = ius(self.fftlog_2h.r,fftlog.pk2xi(self.fftlog_2h.k, self.p_2hcc, N_extrap_low=2048)[1] )(rp)
         #xi_gg_2hcc = ius(self.fftlog_2h.r, fftLog.pk2xi_fftlog_array(
         #    self.k_2h, self.r_2h, self.p_2hcc, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hcc
@@ -1338,7 +1353,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcs(redshift)
-        xi_gg_2hcs = ius(self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hcs)[1] )(rp)
+        xi_gg_2hcs = ius(self.fftlog_2h.r,fftlog.pk2xi(self.fftlog_2h.k, self.p_2hcs, N_extrap_low=2048)[1] )(rp)
+        #xi_gg_2hcs = ius(self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hcs)[1] )(rp)
         #xi_gg_2hcs = ius(self.fftlog_2h.r, fftLog.pk2xi_fftlog_array(
         #    self.k_2h, self.r_2h, self.p_2hcs, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hcs
@@ -1359,7 +1375,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hss(redshift)
-        xi_gg_2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hss)[1] )(rp)
+        xi_gg_2hss = ius(self.fftlog_2h.r,fftlog.pk2xi(self.fftlog_2h.k, self.p_2hss, N_extrap_low=2048)[1] )(rp)
+        #xi_gg_2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hss)[1] )(rp)
         #xi_gg_2hss = ius(self.fftlog_2h.r, fftLog.pk2xi_fftlog_array(
         #    self.k_2h, self.r_2h, self.p_2hss, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hss
@@ -1384,7 +1401,8 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, self.fftlog_1h.pk2dwp(p_tot, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, p_tot, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, self.fftlog_1h.pk2dwp(p_tot, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         #ds = self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(
         #    self.k_1h, self.r_1h, p_tot, self.kr, self.dlnk_1h))(rp)
         return ds
@@ -1407,7 +1425,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen, dlnrp=dlnrp, N_extrap_high=0)[1] )(rp)
+        return self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, self.p_cen, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen, self.kr, self.dlnk_1h))(rp)
 
     def get_ds_cen_off(self, rp, redshift, dlnrp=0.0):
@@ -1427,7 +1445,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen_off(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off, dlnrp=dlnrp, N_extrap_high=0)[1] )(rp)
+        return self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, self.p_cen_off, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off, dlnrp=dlnrp, N_extrap_high=0)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen_off, self.kr, self.dlnk_1h))(rp)
 
     def get_ds_sat(self, rp, redshift, dlnrp=0.0):
@@ -1447,7 +1466,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_sat(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_sat, dlnrp=dlnrp)[1] )(rp)
+        return self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, self.p_sat, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_sat, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_sat, self.kr, self.dlnk_1h))(rp)
 
     def _get_wp_gm(self, rp, redshift, dlnrp=0.0):
@@ -1485,7 +1505,8 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        xi_gm = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot)[1] )(r)
+        #xi_gm = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot)[1] )(r)
+        xi_gm = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot, 1.01, N_extrap_low=2048)[1])(r)
         return xi_gm
 
     def get_xi_gm_cen(self, r, redshift):
@@ -1504,7 +1525,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
-        return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_cen)[1] )(r)
+        return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_cen, N_extrap_low=2048)[1])(r)
 
     def get_xi_gm_cen_off(self, r, redshift):
         """get_xi_gm_cen_off
@@ -1522,7 +1543,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen_off(redshift)
-        return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_cen_off)[1] )(r)
+        return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_cen_off, N_extrap_low=2048)[1])(r)
 
     def get_xi_gm_sat(self, r, redshift):
         """get_xi_gm_sat
@@ -1539,7 +1560,7 @@ class darkemu_x_hod(base_class):
 
         self._check_update_redshift(redshift)
         self._compute_p_sat(redshift)
-        return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_sat)[1] )(r)
+        return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_sat, N_extrap_low=2048)[1])(r)
 
     def _get_wp_mm(self, rp, redshift, dlnrp=0.0):
         xi = self.get_xinl(self.fftlog_2h.r, redshift)
