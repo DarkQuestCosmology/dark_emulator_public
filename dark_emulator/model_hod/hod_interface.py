@@ -1075,7 +1075,7 @@ class darkemu_x_hod(base_class):
     def _get_effective_bias(self, redshift):
         return self._compute_effective_bias(redshift)
 
-    def _get_wp_rsd(self, rp, redshift, pimax):
+    def _get_wp_rsd(self, rp, redshift, pimax, dlnrp = 0.):
         # get xi, and multipoles, xi2, xi4
         r = np.logspace(-1, 3.0, 1000)
         xi0 = self.get_xi_gg(r, redshift)
@@ -1092,9 +1092,9 @@ class darkemu_x_hod(base_class):
         b = self._get_effective_bias(redshift)
         beta = f/b
 
-        wp_rsd = _get_wp_aniso(r, xi0, xi2, xi4, beta, rp, pimax)
+        wp_rsd = _get_wp_aniso(r, xi0, xi2, xi4, beta, pimax, dlnrp = dlnrp)
 
-        return wp_rsd
+        return ius(r, wp_rsd)(rp)
 
     def get_wp(self, rp, redshift, pimax=None, rsd=False, dlnrp=0.0):
         """get_wp
@@ -1113,7 +1113,7 @@ class darkemu_x_hod(base_class):
         """
 
         # Projected correlation functions should be the same if or not there is redshift space distortions when integrated to infinity.
-        if (pimax == None and rsd == False) or (pimax == None and rsd == True):
+        if (pimax == None and rsd == False):
             self._check_update_redshift(redshift)
             self._compute_p_1hcs(redshift)
             self._compute_p_1hss(redshift)
@@ -1123,15 +1123,17 @@ class darkemu_x_hod(base_class):
 
             p_tot_1h = 2.*self.p_1hcs + self.p_1hss
             p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-            wp = ius( self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, p_tot_1h, N_extrap_low=1024, dlnrp=dlnrp)[1] )(rp) + ius(self.fftlog_2h.k, fftlog.pk2wp(self.fftlog_2h.k, p_tot_2h, N_extrap_low=2048, dlnrp=dlnrp)[1] )(rp)
+            wp = ius( self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, p_tot_1h, N_extrap_low=1024, dlnrp=dlnrp)[1])(rp) + ius(self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, p_tot_2h, N_extrap_low=2048, dlnrp=dlnrp)[1] )(rp)
             #wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
             #wp = ius(self.fftlog_1h.r, fftLog.pk2xiproj_J0_fftlog_array(self.fftlog_1h.k, self.fftlog_1h.r, p_tot_1h, self.fftlog_1h.kr, self.fftlog_2h.dlnk))(
             #    rp)+ius(self.fftlog_2h.r, fftLog.pk2xiproj_J0_fftlog_array(self.k_2h, self.r_2h, p_tot_2h, self.kr, self.dlnk_2h))(rp)
+        elif (pimax == None and rsd == True):
+            raise RuntimeError("cannot apply Kaiser for pi_max=inf")
         else:
             if not isinstance(pimax, float):
                 raise RuntimeError("pi_max should be None or float")
             if rsd == True:
-                wp = self._get_wp_rsd(rp, redshift, pimax)
+                wp = self._get_wp_rsd(rp, redshift, pimax, dlnrp)
             else:
                 r_ref = np.logspace(np.min([self.config["fft_logrmin_1h"], self.config["fft_logrmin_2h"]]), np.max(
                     [self.config["fft_logrmax_1h"], self.config["fft_logrmax_2h"]]), 1024)
@@ -1139,10 +1141,20 @@ class darkemu_x_hod(base_class):
                 t = np.linspace(0, pimax, 1024)
                 dt = t[1]-t[0]
                 wp = list()
-                for rpnow in rp:
-                    wp.append(
-                        2*integrate.trapz(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
-                wp = np.array(wp)
+                
+                if dlnrp > 0.0:
+                    rpi = np.logspace(-3, np.log10(pimax), 300)
+                    rp2d, rpi2d = np.meshgrid(r_ref, rpi)
+                    s = (rp2d**2+rpi2d**2)**0.5
+                    xi2d = xi_gg_spl(s)
+                    wp = 2*integrate.trapz(xi2d, rpi, axis=0)
+                    wp = binave_array(r_ref, wp, dlnrp)
+                    wp = ius(r_ref, wp)(rp)
+                else:
+                    for rpnow in rp:
+                        wp.append(
+                            2*integrate.trapz(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
+                    wp = np.array(wp)
         return wp
 
     def get_wp_1hcs(self, rp, redshift, dlnrp=0.0):
@@ -1780,21 +1792,13 @@ def _compute_tinker10_bias(redshift, Mh, massfunc):
     b = 1.-A*nu**a/(nu**a+delta_c**a) + B*nu**b + C*nu**c
     return b
 
-def _get_wp_aniso(r, xi0, xi2, xi4, beta, rp_in, pimax):
+def _get_wp_aniso(r, xi0, xi2, xi4, beta, pimax, dlnrp = 0.):
     # Numerator of Eq. (48) of arxiv: 1206.6890 using mutipole expansion of anisotropic xi including Kaiser effect in Eq. (51) of the same paper.
-    dlnrp_min = 0.01 # bin size of dlnrp enough to obtain 0.01 %
-    if np.log10(rp_in[1]/rp_in[0]) < dlnrp_min:
-        print('Input rp is dense. Using more sparse rp to calculate wp_aniso.')
-        # calcurate wp_aniso on more sparse rp and then interpolate it to obtain wp_aniso on rp_in.
-        rp = 10**np.arange(np.log10(rp_in.min()), np.log10(rp_in.max()), dlnrp_min)
-        interpolate = True
-    else:
-        rp = rp_in
-        interpolate = False
+
 
     rpi = np.logspace(-3, np.log10(pimax), 300) # Ok binning for 1% accuracy.
 
-    rp2, rpi2 = np.meshgrid(rp, rpi)
+    rp2, rpi2 = np.meshgrid(r, rpi)
 
     s = (rp2**2+rpi2**2)**0.5
     mu= rpi2/s
@@ -1811,7 +1815,24 @@ def _get_wp_aniso(r, xi0, xi2, xi4, beta, rp_in, pimax):
 
     wp_aniso = simps(xi_aniso, rpi, axis=0)
 
-    if interpolate:
-        wp_aniso = ius(rp, wp_aniso)(rp_in)
-    
+    if dlnrp > 0.0:
+        wp_aniso = binave_array(r, wp_aniso, dlnrp)
     return wp_aniso
+
+def binave_array(x, y, dlnx, D=2, nbin=100):
+    """
+    Assumes dlnx << np.diff(x).
+    Performs the forward bin average in dimension D.
+    ::math::
+        \\bar{y} = \\frac{1}{d\\ln x} \\int_{\\ln x}^{\\ln x+d\\ln x} x^D y(x)
+    """
+    X = np.linspace(0.0, dlnx, nbin)
+    x2d, X2d = np.meshgrid(x,X)
+    arg = x2d*np.exp(X2d)
+    y2d = ius(x, y)(arg)
+    
+    nom = integrate.simps(arg**D, X, axis=0)
+    
+    ybar = integrate.simps(y2d*arg**D, X, axis=0)/nom
+    
+    return ybar
