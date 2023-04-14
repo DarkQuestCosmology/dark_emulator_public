@@ -131,7 +131,8 @@ class darkemu_x_hod(base_class):
         self.logdens_computed = False
 
     def set_cosmology(self, cparams):
-        if np.any(self.cosmo.get_cosmology() != cparams.reshape(1, 6)) or np.any(self.cparams_orig != cparams.reshape(1, 6)) or (self.initialized == False):
+        cparams = cparams.reshape(1,6)
+        if np.any(self.cosmo.get_cosmology() != cparams) or np.any(self.cparams_orig != cparams) or (self.initialized == False):
             self.do_linear_correction, cparams_tmp = cosmo_util.test_cosm_range(
                 cparams, return_edges=True)
             if cosmo_util.test_cosm_range_linear(cparams):
@@ -165,7 +166,7 @@ class darkemu_x_hod(base_class):
     def set_galaxy(self, gparams):
         """set_galaxy
 
-           This class sets galaxy parameter through a dictionary. See `Miyatake et al (2021) <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_ for the definition of galaxy parameters. Here is the list of keys.
+           This method sets galaxy parameter through a dictionary. See `Miyatake et al (2021) <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_ for the definition of galaxy parameters. Here is the list of keys.
 
            - HOD parameters:
 
@@ -194,6 +195,8 @@ class darkemu_x_hod(base_class):
         """
         # gparams includes galaxy-related parameters such as HOD, offcentering, incompleteness, and pi_max.
         if self.gparams != gparams:
+            if self.gparams and self.gparams["sat_dist_type"] != gparams["sat_dist_type"]:
+                self.p_hm_satdist_computed = False
             self.gparams = gparams
             self.HOD_computed = False
             self.ng_computed = False
@@ -282,7 +285,7 @@ class darkemu_x_hod(base_class):
 
     def _compute_ng_cen(self):  # central galaxy number density
         self.ng_cen = self.do_integration(
-            self.dndM * self.Ncen * self.Mh, dx=dlogMh)
+            self.dndM * self.Ncen * self.Mh, dx=self.dlogMh)
         self.ng_cen_computed = True
 
     def _compute_p_hh_spl_experiment(self, redshift):
@@ -1084,8 +1087,6 @@ class darkemu_x_hod(base_class):
         p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
         xi2 =-ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
         xi4 = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
-        #xi2 =-ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
-        #xi4 = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
 
         # calculate beta
         f = self.f_from_z(redshift)
@@ -1605,6 +1606,28 @@ class darkemu_x_hod(base_class):
         if self.ng_computed == False:
             self._compute_ng()
         return self.ng
+
+    def get_ng_cen(self, redshift):
+        """get_ng_cen
+
+        Compute abundance of central galaxies :math:`n_{g,\mathrm{cen}}`.
+
+        Args:
+            redshift (float): redshift at which the central galaxies are located
+
+        Returns:
+            float: abundance of central galaxies in :math:`h^3\mathrm{Mpc}^{-3}`
+        """
+
+        if self.dndM_computed == False:
+            self._compute_dndM(redshift)
+        if self.dndM_spl_computed == False:
+            self._compute_dndM_spl(redshift)
+        if self.HOD_computed == False:
+            self._compute_HOD()
+        if self.ng_computed == False:
+            self._compute_ng_cen()
+        return self.ng_cen
 
     # methods for concentration
     def _get_M_for_delta_c(self, delta_c = 1.686):

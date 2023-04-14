@@ -21,7 +21,7 @@ class base_class(object):
         By passing to the base class object, the cosmological paramters in all the lower-level objects are updated.
 
         Args:
-            cparam (numpy array): Cosmological parameters :math:`(\omega_b, \omega_{m}, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
+            cparam (numpy array): Cosmological parameters :math:`(\omega_b, \omega_c, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
 
         Attributes:
             cosmo (class cosmo_class): A class object dealing with the cosmological parameters and some basic cosmological quantities such as expansion and linear growth.
@@ -61,7 +61,7 @@ class base_class(object):
 
         Args:
             cparam (numpy array): Cosmological parameters
-                :math:`(\omega_b, \omega_{m}, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
+                :math:`(\omega_b, \omega_c, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
         """
         self.cosmo.set_cosmology(cparam)
         self.pkL.set_cosmology(self.cosmo)
@@ -1035,6 +1035,42 @@ class base_class(object):
         """
         return self.g1.get_bias(redshift, logdens)
 
+    def get_bias_massthreshold(self, Mth, redshift):
+        """get_bias_massthreshold
+
+        Compute the linear bias, :math:`b(>M_\mathrm{th})`, for a mass threshold halo sample.
+
+
+        Args:
+            Mth (float): Halo mass threshold in :math:`[h^{-1}M_\odot]`
+            redshift (float): redshift at which the lens halos are located
+
+        Returns:
+            float: linear bias factor
+        """
+        logdens = np.log10(self.mass_to_dens(Mth, redshift))
+        return self.get_bias(logdens, redshift)
+
+    def get_bias_mass(self, M, redshift):
+        """get_bias_mass
+
+        Compute the linear bias for halos with mass :math:`M`.
+
+        Args:
+            M (float): Halo mass in :math:`[h^{-1}M_\odot]`
+            redshift (float): redshift at which the lens halos are located
+
+        Returns:
+            float: linear bias factor
+        """
+        Mp = M * 1.01
+        Mm = M * 0.99
+        logdensp = np.log10(self.mass_to_dens(Mp, redshift))
+        logdensm = np.log10(self.mass_to_dens(Mm, redshift))
+        bp = self.get_bias(logdensp, redshift)
+        bm = self.get_bias(logdensm, redshift)
+        return (bm * 10**logdensm - bp * 10**logdensp) / (10**logdensm - 10**logdensp)
+
     def _get_gamma1_h(self, k, logdens, redshift):
         return self.g1.get(k, redshift, logdens)
 
@@ -1100,7 +1136,7 @@ class base_class(object):
         Obtain the cosmological parameters currently set to the emulator.
 
         Returns:
-            numpy array: Cosmological parameters :math:`(\omega_b, \omega_{m}, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
+            numpy array: Cosmological parameters :math:`(\omega_b, \omega_c, \Omega_{de}, \ln(10^{10}A_s), n_s, w)`
         """
         return self.cosmo.get_cosmology()
 
