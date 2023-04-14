@@ -4,4 +4,3 @@ scipy
 george
 # additionnal requirements for hod modules
 #colossus
-pyfftlog
