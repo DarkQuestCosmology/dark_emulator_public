@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
 from .sigmad import sigmad_gp
@@ -9,7 +10,7 @@ from .import gp
 class gamma1_gp:
 
     def __init__(self):
-        print('initialize propagator emulator')
+        logging.info('initialize propagator emulator')
         self.xdata = np.loadtxt(os.path.dirname(
             os.path.abspath(__file__)) + '/../data/params_80models.dat')
         self.ydata = np.load(os.path.dirname(os.path.abspath(
@@ -38,7 +39,7 @@ class gamma1_gp:
         self.sd = sigmad_gp()
 
     # def reload(self):
-    # 	print 'reloading data files for gamma1_gp object...'
+    # 	logging.info("reloading data files for gamma1_gp object...")
     # 	self.dout = np.load(os.path.dirname(__file__) + '/../learned_data/gamma1/gamma1_dm_dout.npy')
     # 	self.gp = joblib.load(os.path.dirname(__file__) + '/../learned_data/gamma1/gamma1_dm_fit_gps.pkl')
     # 	self.dout_h = np.load(os.path.dirname(__file__) + '/../learned_data/gamma1/gamma1_dout.npy')

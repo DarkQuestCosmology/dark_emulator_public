@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 import george
 from george import kernels
 from scipy import integrate
@@ -9,7 +10,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as ius
 
 class sigmaM_gp:
     def __init__(self):
-        print('Initialize sigmaM emulator')
+        logging.info('Initialize sigmaM emulator')
         self.Mlist = np.logspace(10, 16, 601)
         self.load_sigma_gp()
         self.As_fid = np.exp(3.094)
@@ -42,7 +43,7 @@ class sigmaM_gp:
                     kernels.ExpSquaredKernel(
                         np.ones(4), ndim=4) + kernels.ConstantKernel(1e-4, ndim=4)
             else:
-                print('kernel type 6 and 10 are the only supported types.')
+                logging.info('kernel type 6 and 10 are the only supported types.')
             gp = george.GP(kernel)
             gp.compute(self.cosmos[:800])
             gp.set_parameter_vector(self.gp_params[i])
