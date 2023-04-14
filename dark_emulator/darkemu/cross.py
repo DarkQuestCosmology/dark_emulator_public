@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
 from scipy import ndimage
@@ -9,7 +10,7 @@ from . import gp
 class cross_gp:
 
     def __init__(self):
-        print('initialize cross-correlation emulator')
+        logging.info('initialize cross-correlation emulator')
         self.logrscale = np.load(os.path.dirname(os.path.abspath(
             __file__)) + '/../learned_data/xicross/loge_xs.npy')
         self.rscale = np.exp(self.logrscale)

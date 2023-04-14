@@ -15,6 +15,7 @@ Edited by Sunao Sugiyama
 import numpy as np
 from scipy.special import gamma
 from numpy.fft import rfft, irfft
+import logging
 
 class fftlog(object):
 
@@ -86,7 +87,6 @@ class fftlog(object):
 		h_m = self.c_m * (self.x[0]*y[0])**(-1j*self.eta_m) * g_l(ell, z_ar)
 
 		Fy = irfft(np.conj(h_m)) * y**(-self.nu) * np.sqrt(np.pi)/4.
-		#print(self.N_extrap_high,self.N,self.N_extrap_low)
 		return y[self.N_extrap_high:self.N-self.N_extrap_low], Fy[self.N_extrap_high:self.N-self.N_extrap_low]
     
 	def fftlog_binave(self, ell, bandwidth_dlny, D, alpha_pow):
@@ -105,7 +105,6 @@ class fftlog(object):
 		s_d_lambda = (np.exp(D*bandwidth_dlny) -1. ) / D
 		h_m = self.c_m * (self.x[0]*y[0])**(-1j*self.eta_m) * gl/s_d_lambda
 		Fy = irfft(np.conj(h_m)) * y**(-self.nu) * np.sqrt(np.pi)/4.
-		#print(self.N_extrap_high,self.N,self.N_extrap_low)
 		return y[self.N_extrap_high:self.N-self.N_extrap_low], Fy[self.N_extrap_high:self.N-self.N_extrap_low]
 
 	def fftlog_dj(self, ell):
@@ -146,7 +145,6 @@ class fftlog(object):
 
 class hankel(object):
 	def __init__(self, x, fx, nu, N_extrap_low=0, N_extrap_high=0, c_window_width=0.25, N_pad=0, xy=1):
-		#print('nu is required to be between (0.5-n) and 2.')
 		self.myfftlog = fftlog(x, np.sqrt(x)*fx, nu, N_extrap_low, N_extrap_high, c_window_width, N_pad, xy=1)
 	
 	def hankel(self, n):
@@ -198,7 +196,7 @@ def g_m_vals(mu,q):
 	switching to asymptotic form when |Im(q)| + |mu| > cut = 200
 	'''
 	if(mu+1+q.real[0]==0):
-		print("gamma(0) encountered. Please change another nu value! Try nu=1.1 .")
+		logging.info("gamma(0) encountered. Please change another nu value! Try nu=1.1 .")
 		exit()
 	imag_q= np.imag(q)
 	g_m=np.zeros(q.size, dtype=complex)

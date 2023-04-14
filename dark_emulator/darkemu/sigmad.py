@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 import george
 from george import kernels
 from scipy import integrate
@@ -7,7 +8,7 @@ from scipy import integrate
 
 class sigmad_gp:
     def __init__(self):
-        print('Initialize sigma_d emulator')
+        logging.info('Initialize sigma_d emulator')
         self.cosmos = np.loadtxt(os.path.dirname(
             os.path.abspath(__file__)) + '/../data/cparams_4d.dat')
         self.ydata = np.loadtxt(os.path.dirname(os.path.abspath(
@@ -29,7 +30,7 @@ class sigmad_gp:
                 kernels.ExpSquaredKernel(
                     np.ones(4), ndim=4) + kernels.ConstantKernel(1e-4, ndim=4)
         else:
-            print('kernel type 6 and 10 are the only supported types.')
+            logging.info('kernel type 6 and 10 are the only supported types.')
         self.gp = george.GP(kernel)
         self.gp.compute(self.cosmos[:800])
         self.gp.set_parameter_vector(self.gp_params)

@@ -26,7 +26,7 @@ try:
     from colossus.cosmology import cosmology as colcosmology
     from colossus.halo import concentration
 except:
-    print('colossus is not installed.')
+    logging.warning('colossus is not installed.')
 
 
 path_baryon = os.path.dirname(__file__)
@@ -65,7 +65,7 @@ class darkemu_x_hod(base_class):
            config (dict): a dictionary to specify configurations
     """
     def __init__(self, config=None):
-        logging.basicConfig(level=logging.DEBUG)
+        #logging.basicConfig(level=logging.DEBUG)
         self.redshift = None
 
         # set up default config
@@ -1662,7 +1662,6 @@ class darkemu_x_hod(base_class):
 
         def F(target_c):
             return target_delta*target_c**3*self._get_fNFW(target_c)*target_rho - delta*c**3*self._get_fNFW(c)*rho
-        #print("c", c)
         target_c = optimize.newton(F, c)
         return target_c
 
@@ -1689,7 +1688,7 @@ class darkemu_x_hod(base_class):
         return c_200m
 
     def _get_concentration_Maccio08(self, M_200m, z):
-        print("halo mass", M_200m/10**14.)
+        logging.info("halo mass", M_200m/10**14.)
         K = 3.85
         F = 0.01
 

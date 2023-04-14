@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 from scipy import interpolate
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
@@ -9,7 +10,7 @@ from . import gp
 class xinl_gp:
 
     def __init__(self):
-        print('initialize xinl emulator')
+        logging.info('initialize xinl emulator')
         # self.logxscale = np.log(np.load(os.path.dirname(os.path.abspath(__file__)) + '/../learned_data/ximnl/xs.npy'))
         self.xscale = np.logspace(-2, 2, 41)
         self.logxscale = np.log(self.xscale)

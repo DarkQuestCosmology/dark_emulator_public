@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 from scipy import integrate
 from scipy.misc import derivative
 from collections import OrderedDict
@@ -67,7 +68,7 @@ class cosmo_class:
     rho_cr = 2.77536627e11  # [M_sun/h] / [Mpc/h]^3\n"
 
     def __init__(self):
-        print('initialize cosmo_class')
+        logging.info('initialize cosmo_class')
         self.cpara_list = np.loadtxt(os.path.dirname(os.path.abspath(
             __file__)) + '/../data/params.dat')[:, [0, 1, 2, 4, 5, 6]]
         self.ascale_list = np.loadtxt(os.path.dirname(
@@ -93,7 +94,7 @@ class cosmo_class:
             test_cosm_range(cparam_in)
             self.cparam = cparam_in.reshape(1, 6)
         except:
-            print('cosmological parameter out of supported range!')
+            logging.info('cosmological parameter out of supported range!')
 
     def get_cosmology(self):
         return self.cparam

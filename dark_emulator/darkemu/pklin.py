@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy import integrate
 import george
@@ -8,7 +9,7 @@ from george import kernels
 
 class pklin_gp:
     def __init__(self):
-        print('Initialize pklin emulator')
+        logging.info('Initialize pklin emulator')
         self.klist = np.logspace(-3, 1, 200)
         self.logklist = np.log(self.klist)
         self.cosmos = np.loadtxt(os.path.dirname(
@@ -38,7 +39,7 @@ class pklin_gp:
                     kernels.ExpSquaredKernel(
                         np.ones(3), ndim=3) + kernels.ConstantKernel(1e-4, ndim=3)
             else:
-                print('kernel type 6 and 10 are the only supported types.')
+                logging.info('kernel type 6 and 10 are the only supported types.')
             gp = george.GP(kernel)
             gp.compute(self.cosmos[:800])
             gp.set_parameter_vector(self.gp_params[i])

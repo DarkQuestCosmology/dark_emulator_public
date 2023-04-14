@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import logging
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
 from scipy import ndimage
@@ -9,7 +10,7 @@ from . import gp
 class auto_gp:
 
     def __init__(self):
-        print('initialize auto-correlation emulator')
+        logging.info('initialize auto-correlation emulator')
         self.logrscale = np.load(os.path.dirname(os.path.abspath(
             __file__)) + '/../learned_data/xiauto/loge_xs.npy')
         self.xdata = np.loadtxt(os.path.dirname(
