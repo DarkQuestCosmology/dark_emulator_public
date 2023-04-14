@@ -25,7 +25,7 @@ In that case, you need to install `george` (a software package for the Gaussian 
 conda install -c conda-forge george
 pip install colossus
 ```
-From version XXX, `dark_emulator` uses FFTLog implementation by [Fang et al (2019); arXiv:1911.11947](https://arxiv.org/abs/1911.11947).
+From version 1.1.0, `dark_emulator` uses FFTLog implementation by [Fang et al (2019); arXiv:1911.11947](https://arxiv.org/abs/1911.11947).
 
 ## Usage
 You can then check how Dark Emulator works by running a tutorial notebook at
