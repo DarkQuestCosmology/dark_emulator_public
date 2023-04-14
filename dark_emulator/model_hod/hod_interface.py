@@ -15,11 +15,13 @@ from ..darkemu.pklin import pklin_gp
 from ..darkemu.cosmo_util import cosmo_class
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
+from scipy.integrate import simps
+from scipy.special import eval_legendre
 from scipy import integrate
 from scipy import special
 from scipy import ndimage
 from scipy import optimize
-from .. import pyfftlog_interface
+from .. import fftlog
 try:
     from colossus.cosmology import cosmology as colcosmology
     from colossus.halo import concentration
@@ -68,7 +70,11 @@ class darkemu_x_hod(base_class):
 
         # set up default config
         self.config = dict()
-        self.config["fft_num"] = 8 # Sunao : changed from 5 to 8 for fftlog in wp_2hcs, wp_2hss, xi_2hcs and xi_2hss to converge at -1.0 < log10(r) < 1.0.
+        self.config["fft_num"] = 1
+        #self.config["fft_logrmin_1h"] = -5.0
+        #self.config["fft_logrmax_1h"] = 3.0
+        #self.config["fft_logrmin_2h"] = -3.0
+        #self.config["fft_logrmax_2h"] = 3.0
         self.config["fft_logrmin_1h"] = -5.0
         self.config["fft_logrmax_1h"] = 3.0
         self.config["fft_logrmin_2h"] = -3.0
@@ -83,8 +89,7 @@ class darkemu_x_hod(base_class):
         self.config["p_hm_apodization"] = None # apodization with the scale sigma_k=self.config["p_hm_apodization"]/R200 is applied for satelite distribution computed from emulator. See def _compute_p_hm_satdist_emu() for details
         # override if specified in input
         if config is not None:
-            for key in list(config.keys()):
-                self.config[key] = config[key]
+            self.config.update(config)
 
         # internal config parameters
         self.config["hmf_int_algorithm"] = "trapz"
@@ -94,8 +99,8 @@ class darkemu_x_hod(base_class):
             self.config["M_int_logMmin"], self.config["M_int_logMmax"], 2**self.config["M_int_k"]+1)
         self.dlogMh = np.log(self.Mh[1]) - np.log(self.Mh[0])
 
-        self.fftlog_1h = pyfftlog_interface.fftlog(self.config['fft_num'], logrmin=self.config['fft_logrmin_1h'], logrmax=self.config['fft_logrmax_1h'], kr=1)
-        self.fftlog_2h = pyfftlog_interface.fftlog(self.config['fft_num'], logrmin=self.config['fft_logrmin_2h'], logrmax=self.config['fft_logrmax_2h'], kr=1)
+        self.fftlog_1h = fftlog.fftbase(self.config['fft_num'], self.config['fft_logrmin_1h'], self.config['fft_logrmax_1h'], kr=1)
+        self.fftlog_2h = fftlog.fftbase(self.config['fft_num'], self.config['fft_logrmin_2h'], self.config['fft_logrmax_2h'], kr=1)
 
         if self.config["M_int_algorithm"] == "romberg":
             self.do_integration = integrate.romb
@@ -104,12 +109,13 @@ class darkemu_x_hod(base_class):
 
         self.k_1h_mat = np.tile(self.fftlog_1h.k, (len(self.Mh), 1))
         self.k_2h_mat = np.tile(self.fftlog_2h.k, (len(self.Mh), 1))
+        self.k_2h_mat = np.tile(self.fftlog_2h.k, (len(self.Mh), 1))
         self.Mh_mat = np.tile(self.Mh, (len(self.fftlog_2h.k), 1)).transpose()
 
         self.gparams = None
         self.initialized = False
         self.cparams_orig = np.zeros((1, 6))
-        super(darkemu_x_hod, self).__init__()
+        super().__init__()
 
     # The following flags tell if dndM and power spectrum should be recomputed when cosmology or redshift is varied.
     def _initialize_cosmology_computation_flags(self):
@@ -139,13 +145,13 @@ class darkemu_x_hod(base_class):
                 logging.info("%s is out of the supported range. Instaead use %s and apply linear correction later." % (
                     self.cparams_orig, cparams))
                 # compute pklin for cparams_orig here
-                super(darkemu_x_hod, self).set_cosmology(self.cparams_orig)
+                super().set_cosmology(self.cparams_orig)
                 self.pm_lin_k_1h_out_of_range = self.get_pklin(self.fftlog_1h.k)
                 self.pm_lin_k_2h_out_of_range = self.get_pklin(self.fftlog_2h.k)
                 self.cosmo_orig = copy.deepcopy(self.cosmo)
                 self.massfunc_cosmo_edge = hmf_gp()
                 self.massfunc_cosmo_edge.set_cosmology(self.cosmo)
-            super(darkemu_x_hod, self).set_cosmology(cparams)
+            super().set_cosmology(cparams)
             if self.do_linear_correction:
                 self.massfunc.set_cosmology(self.cosmo_orig)
             self.rho_m = (1. - cparams[0][2])*rho_cr
@@ -410,7 +416,7 @@ class darkemu_x_hod(base_class):
             for j in range(len(logdens_g1)):
                 if logdens_g1[i] < logdens_g1[j]:
                     continue
-                p_hh[i, j] = self.fftlog_2h.xi2pk(xi_hh[i, j])
+                p_hh[i, j] = self.fftlog_2h.xi2pk(xi_hh[i, j])[1]
                 #p_hh[i, j] = fftLog.xi2pk_fftlog_array(
                 #    self.fftlog_2h.r, self.fftlog_2h.k, xi_hh[i, j], self.fftlog_2h.kr, self.fftlog_2h.dlnr)
                 if i != j:
@@ -502,7 +508,8 @@ class darkemu_x_hod(base_class):
                 ph_tree = numer/denom
                 #p_hh_tree[i,j] = ph_tree
 
-                xi_tree = self.fftlog_2h.pk2xi(ph_tree)
+                xi_tree = fftlog.pk2xi(self.fftlog_2h.k, ph_tree, 1.01, N_extrap_low=1024)[1]
+                #xi_tree = self.fftlog_2h.pk2xi(ph_tree, N_extrap_high=0)[1]
                 #xi_tree = fftLog.pk2xi_fftlog_array(
                 #    self.k_2h, self.r_2h, ph_tree, self.kr, self.dlnk_2h)
                 xi_hh = xi_dir * connection_factor_1 + xi_tree * connection_factor_2
@@ -510,7 +517,7 @@ class darkemu_x_hod(base_class):
                 if self.do_linear_correction:
                     xi_hh *= bias_correction[i]*bias_correction[j]
 
-                p_hh[i, j] = self.fftlog_2h.xi2pk(xi_hh)
+                p_hh[i, j] = fftlog.xi2pk(self.fftlog_2h.k, xi_hh, 1.01, N_extrap_high=1024)[1]
                 #p_hh[i, j] = fftLog.xi2pk_fftlog_array(
                 #    self.r_2h, self.k_2h, xi_hh, self.kr, self.dlnr_2h)
                 if i != j:
@@ -643,7 +650,7 @@ class darkemu_x_hod(base_class):
                         phm_tree_p * 10**logdensp) / denom
             #import matplotlib.pyplot as plt
             #plt.semilogx(self.k_1h, g1p)
-            xi_hm_tree = self.fftlog_1h.pk2xi(phm_tree)
+            xi_hm_tree = self.fftlog_1h.pk2xi(phm_tree, N_extrap_high=0)[1]
             #xi_hm_tree = fftLog.pk2xi_fftlog_array(
             #    self.k_1h, self.r_1h, phm_tree, self.kr, self.dlnk_1h)
             xi_hm_tmp = xi_hm_dir * np.exp(-(self.fftlog_1h.r/rswitch)**4) + xi_hm_tree * (1-np.exp(-(self.fftlog_1h.r/rswitch)**4))
@@ -668,7 +675,7 @@ class darkemu_x_hod(base_class):
 
         p_hm = np.zeros((len(logdens), len(self.fftlog_1h.k)))
         for i in range(len(logdens)):
-            p_hm[i] = self.fftlog_1h.xi2pk(self.xi_hm[i])
+            p_hm[i] = self.fftlog_1h.xi2pk(self.xi_hm[i], 1.01, N_extrap_high=1024)[1]
             #p_hm[i] = fftLog.xi2pk_fftlog_array(
             #    self.r_1h, self.k_1h, self.xi_hm[i], self.kr, self.dlnr_1h)
             if "baryon" in list(self.gparams.keys()):
@@ -705,7 +712,7 @@ class darkemu_x_hod(base_class):
             sel = (self.fftlog_1h.r > _R200)
             xi_hm_dist = np.copy(self.xi_hm[i])
             xi_hm_dist[sel] = 0.
-            p_hm_dist_tmp = self.fftlog_1h.xi2pk(xi_hm_dist)
+            p_hm_dist_tmp = self.fftlog_1h.xi2pk(xi_hm_dist, N_extrap_high=0)[1]
             #p_hm_dist_tmp = fftLog.xi2pk_fftlog_array(
             #    self.r_1h, self.k_1h, xi_hm_dist, self.kr, self.dlnr_1h)
             if self.do_linear_correction:
@@ -729,7 +736,20 @@ class darkemu_x_hod(base_class):
         self.p_hm_dist_2h = np.array(
             [ius(self.fftlog_1h.k, p_hm_dist[i], ext=3)(self.fftlog_2h.k) for i in range(len(self.Mh))])
 
-    def _concentration(self, M, z, model='diemer15'):
+    def _concentration(self, cosmo, M, z, model='diemer15'):
+        c200m = concentration.concentration(M, '200m', z, model=model)
+        return c200m
+
+    def _compute_p_hm_satdist_NFW(self, redshift):
+        R200 = (3*self._convert_dens_to_mass(10**np.array(self.xi_cross.logdens_list), redshift,
+                                    integration=self.config["hmf_int_algorithm"])/(4.*np.pi*self.rho_m)/200.)**(1./3.)
+
+        p_hm_dist = list()
+        if "sat_dist_Rc" in list(self.gparams.keys()):
+            Rc = self.gparams["sat_dist_Rc"]
+        else:
+            Rc = 1.0
+
         if self.do_linear_correction:
             cparam = self.cparams_orig[0]
         else:
@@ -743,22 +763,10 @@ class darkemu_x_hod(base_class):
         sigma8 = self.massfunc.sM.get_sigma(M_8mpc)
         ns = cparam[4]
         params = {'flat': True, 'H0': H0, 'Om0': Om0,
-                  'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns, 'persistence': ''}
-        cosmo = colcosmology.setCosmology('myCosmo', params)
-        c200m = concentration.concentration(M, '200m', z, model=model)
-        return c200m
-
-    def _compute_p_hm_satdist_NFW(self, redshift):
-        R200 = (3*self._convert_dens_to_mass(10**np.array(self.xi_cross.logdens_list), redshift,
-                                    integration=self.config["hmf_int_algorithm"])/(4.*np.pi*self.rho_m)/200.)**(1./3.)
-
-        p_hm_dist = list()
-        if "sat_dist_Rc" in list(self.gparams.keys()):
-            Rc = self.gparams["sat_dist_Rc"]
-        else:
-            Rc = 1.0
+                  'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns}
+        cosmo = colcosmology.setCosmology('myCosmo', params)        
         for i, (_M, _R200) in enumerate(zip(self.Mh, self.R200)):
-            c200 = self._concentration(_M, redshift, self.config["c-M_relation"])  # , model = 'duffy08')
+            c200 = self._concentration(cosmo, _M, redshift, self.config["c-M_relation"])  # , model = 'duffy08')
             if c200 == -1:
                 #raise RuntimeError("concentration cannot be computed at (M,z) = (%e,%e)" % (_M, redshift))
                 if self.do_linear_correction:
@@ -909,6 +917,8 @@ class darkemu_x_hod(base_class):
             self._compute_ng()
         if self.p_hh_computed == False:
             self._compute_p_hh(redshift)
+        if self.p_hm_satdist_computed == False:
+            self._compute_p_hm_satdist(redshift)
 
         poff = self.gparams["poff"]
         Roff = self.gparams["Roff"]
@@ -1068,62 +1078,26 @@ class darkemu_x_hod(base_class):
     def _get_effective_bias(self, redshift):
         return self._compute_effective_bias(redshift)
 
-    def _get_wp_rsd(self, rp, redshift, pimax):
-        # calculate xi
-        r_ref = np.logspace(-3, 3, 512)
-        xi = self.get_xi_gg(r_ref, redshift)
-        xi_spl = ius(r_ref, xi)
+    def _get_wp_rsd(self, rp, redshift, pimax, dlnrp = 0.):
+        # get xi, and multipoles, xi2, xi4
+        r = np.logspace(-1, 3.0, 1000)
+        xi0 = self.get_xi_gg(r, redshift)
+
+        p_tot_1h = 2.*self.p_1hcs + self.p_1hss
+        p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
+        xi2 =-ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_high=0, l=2)[1])(r) - ius( self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_high=0, l=2)[1] )(r)
+        xi4 = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_high=0, l=4)[1])(r) + ius( self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_high=0, l=4)[1] )(r)
 
         # calculate beta
         f = self.f_from_z(redshift)
-        #b = 2.118
         b = self._get_effective_bias(redshift)
         beta = f/b
 
-        n = 3
-        J_n = list()
-        for _r in r_ref:
-            t = np.linspace(1e-10, _r, 1024)
-            dt = t[1]-t[0]
-            J_n.append(1./_r**n*integrate.trapz(t**(n-1.)*xi_spl(t), dx=dt))
-        J_3 = np.array(J_n)
+        wp_rsd = _get_wp_aniso(r, xi0, xi2, xi4, beta, pimax, dlnrp = dlnrp)
 
-        n = 5
-        J_n = list()
-        for _r in r_ref:
-            t = np.linspace(1e-10, _r, 1024)
-            dt = t[1]-t[0]
-            J_n.append(1./_r**n*integrate.trapz(t**(n-1.)*xi_spl(t), dx=dt))
-        J_5 = np.array(J_n)
+        return ius(r, wp_rsd)(rp)
 
-        xi_0 = (1.+2./3.*beta+1./5.*beta**2)*xi
-        xi_2 = (4./3.*beta+4./7.*beta**2)*(xi-3.*J_3)
-        xi_4 = 8./35.*beta**2*(xi+15./2.*J_3-35./2.*J_5)
-
-        r_pi = np.logspace(-3, np.log10(pimax), 512)
-        rp, r_pi = np.meshgrid(rp, r_pi, indexing='ij')
-
-        s = np.sqrt(rp**2+r_pi**2)
-
-        mu = r_pi/s
-
-        l0 = special.eval_legendre(0, mu)
-        l2 = special.eval_legendre(2, mu)
-        l4 = special.eval_legendre(4, mu)
-
-        xi_s = ius(r_ref, xi_0)(s)*l0 + ius(r_ref, xi_2)(s) * \
-            l2 + ius(r_ref, xi_4)(s)*l4
-
-        xi_s_spl = rbs(rp[:, 0], r_pi[0], xi_s)
-
-        wp = list()
-        for _r in rp:
-            wp.append(2*integrate.quad(lambda t: xi_s_spl(_r, t)
-                                       [0][0], 0, pimax, epsabs=1e-4)[0])
-        wp = np.array(wp)
-        return wp
-
-    def get_wp(self, rp, redshift, pimax=None, rsd=False):
+    def get_wp(self, rp, redshift, pimax=None, rsd=False, dlnrp=0.0):
         """get_wp
 
         Compute projected galaxy auto-correlation function :math:`w_\mathrm{p}(r_\mathrm{p})`.
@@ -1133,13 +1107,14 @@ class darkemu_x_hod(base_class):
             redshift (float): redshift at which the galaxies are located
             pi_max (float): The range of line of sight integral :math:`\pi_{\mathrm{max}}` in :math:`h^{-1}\mathrm{Mpc}`. If None, the projection is performed using the zeroth order Bessel function, i.e., :math:`\pi_{\mathrm{max}}=\infty` (default=None).
             rsd (bool): if True, redshift space distortion is incorporated into the model (default=False).
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected galaxy auto-correlation function in :math:`h^{-1}\mathrm{Mpc}`
         """
 
         # Projected correlation functions should be the same if or not there is redshift space distortions when integrated to infinity.
-        if (pimax == None and rsd == False) or (pimax == None and rsd == True):
+        if (pimax == None and rsd == False):
             self._check_update_redshift(redshift)
             self._compute_p_1hcs(redshift)
             self._compute_p_1hss(redshift)
@@ -1149,14 +1124,17 @@ class darkemu_x_hod(base_class):
 
             p_tot_1h = 2.*self.p_1hcs + self.p_1hss
             p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-            wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h) )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h) )(rp)
+            wp = ius( self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, p_tot_1h, N_extrap_low=1024, dlnrp=dlnrp)[1])(rp) + ius(self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, p_tot_2h, N_extrap_low=2048, dlnrp=dlnrp)[1] )(rp)
+            #wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot_1h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(p_tot_2h, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
             #wp = ius(self.fftlog_1h.r, fftLog.pk2xiproj_J0_fftlog_array(self.fftlog_1h.k, self.fftlog_1h.r, p_tot_1h, self.fftlog_1h.kr, self.fftlog_2h.dlnk))(
             #    rp)+ius(self.fftlog_2h.r, fftLog.pk2xiproj_J0_fftlog_array(self.k_2h, self.r_2h, p_tot_2h, self.kr, self.dlnk_2h))(rp)
+        elif (pimax == None and rsd == True):
+            raise RuntimeError("cannot apply Kaiser for pi_max=inf")
         else:
             if not isinstance(pimax, float):
                 raise RuntimeError("pi_max should be None or float")
             if rsd == True:
-                wp = self._get_wp_rsd(rp, redshift, pimax)
+                wp = self._get_wp_rsd(rp, redshift, pimax, dlnrp)
             else:
                 r_ref = np.logspace(np.min([self.config["fft_logrmin_1h"], self.config["fft_logrmin_2h"]]), np.max(
                     [self.config["fft_logrmax_1h"], self.config["fft_logrmax_2h"]]), 1024)
@@ -1164,13 +1142,23 @@ class darkemu_x_hod(base_class):
                 t = np.linspace(0, pimax, 1024)
                 dt = t[1]-t[0]
                 wp = list()
-                for rpnow in rp:
-                    wp.append(
-                        2*integrate.trapz(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
-                wp = np.array(wp)
+                
+                if dlnrp > 0.0:
+                    rpi = np.logspace(-3, np.log10(pimax), 300)
+                    rp2d, rpi2d = np.meshgrid(r_ref, rpi)
+                    s = (rp2d**2+rpi2d**2)**0.5
+                    xi2d = xi_gg_spl(s)
+                    wp = 2*integrate.trapz(xi2d, rpi, axis=0)
+                    wp = binave_array(r_ref, wp, dlnrp)
+                    wp = ius(r_ref, wp)(rp)
+                else:
+                    for rpnow in rp:
+                        wp.append(
+                            2*integrate.trapz(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
+                    wp = np.array(wp)
         return wp
 
-    def get_wp_1hcs(self, rp, redshift):
+    def get_wp_1hcs(self, rp, redshift, dlnrp=0.0):
         """get_wp_1hcs
 
         Compute projected 1-halo correlation function between central and satellite galaxies :math:`w_\mathrm{p, cen-sat}^\mathrm{1h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1178,6 +1166,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 1-halo correlation function between central and satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1186,10 +1175,11 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hcs(redshift)
-        wp1hcs = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hcs) )(rp)
+        #x, y, = fftlog.pk2wp(self.fftlog_1h.k, self.p_1hcs, 1.01, N_extrap_low=2048, dlnrp = dlnrp)
+        wp1hcs = ius(self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, self.p_1hcs, 1.01, N_extrap_low=2048, dlnrp = dlnrp)[1] )(rp)
         return wp1hcs
 
-    def get_wp_1hss(self, rp, redshift):
+    def get_wp_1hss(self, rp, redshift, dlnrp=0.0):
         """get_wp_1hss
 
         Compute projected 1-halo correlation function between satellite galaxies :math:`w_\mathrm{p, sat-sat}^\mathrm{1h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1197,6 +1187,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 1-halo correlation function between satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1205,10 +1196,11 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hss(redshift)
-        wp1hss = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hss) )(rp)
+        wp1hss = ius( self.fftlog_1h.r, fftlog.pk2wp(self.fftlog_1h.k, self.p_1hss, 1.01, N_extrap_low=2048, dlnrp = dlnrp)[1] )(rp)
+        #wp1hss = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(self.p_1hss, N_extrap_low=1024, dlnrp=dlnrp)[1] )(rp)
         return wp1hss
 
-    def get_wp_2hcc(self, rp, redshift):
+    def get_wp_2hcc(self, rp, redshift, dlnrp=0.0):
         """get_wp_2hcc
 
         Compute projected 2-halo correlation function between central galaxies :math:`w_\mathrm{p, cen-cen}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1216,6 +1208,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 2-halo correlation function between central galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1224,10 +1217,11 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcc(redshift)
-        wp2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcc) )(rp)
+        wp2hcc = ius( self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hcc, 1.01, N_extrap_low=2048)[1] )(rp)
+        #wp2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcc, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hcc
 
-    def get_wp_2hcs(self, rp, redshift):
+    def get_wp_2hcs(self, rp, redshift, dlnrp=0.0):
         """get_wp_2hcs
 
         Compute projected 2-halo correlation function between central and satellite galaxies :math:`w_\mathrm{p, cen-sat}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1235,6 +1229,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 2-halo correlation function between central and satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1243,10 +1238,11 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcs(redshift)
-        wp2hcs = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcs) )(rp)
+        wp2hcs = ius( self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hcs, 1.01, N_extrap_low=2048)[1] )(rp)
+        #wp2hcs = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hcs, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hcs
 
-    def get_wp_2hss(self, rp, redshift):
+    def get_wp_2hss(self, rp, redshift, dlnrp=0.0):
         """get_wp_2hss
 
         Compute projected 2-halo correlation function between satellite galaxies :math:`w_\mathrm{p, sat-sat}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
@@ -1254,6 +1250,7 @@ class darkemu_x_hod(base_class):
         Args:
             r_p (numpy array): 2 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: projected 2-halo correlation function between satellite galaxies in :math:`h^{-1}\mathrm{Mpc}`
@@ -1262,7 +1259,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hss(redshift)
-        wp2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2wp(self.p_2hss) )(rp)
+        wp2hss = ius( self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hss, 1.01, N_extrap_low=2048)[1] )(rp)
+        #wp2hss = ius(self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hss, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hss
 
     def get_xi_gg(self, r, redshift):
@@ -1288,7 +1286,8 @@ class darkemu_x_hod(base_class):
 
         p_tot_1h = 2.*self.p_1hcs + self.p_1hss
         p_tot_2h = self.p_2hcc + 2.*self.p_2hcs + self.p_2hss
-        xi_gg = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h) )(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h) )(r)
+        xi_gg = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot_1h, N_extrap_low=2048)[1])(r) + ius(self.fftlog_2h.r, fftlog.pk2xi(self.fftlog_2h.k, p_tot_2h, N_extrap_low=2048)[1] )(r)
+        #xi_gg = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot_1h, N_extrap_high=0)[1])(r) + ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(p_tot_2h, N_extrap_high=0)[1] )(r)
         return xi_gg
 
     def get_xi_gg_1hcs(self, r, redshift):
@@ -1307,7 +1306,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hcs(redshift)
-        xi_gg_1hcs = ius(self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_1hcs) )(r)
+        xi_gg_1hcs = ius(self.fftlog_1h.r,fftlog.pk2xi(self.fftlog_1h.k, self.p_1hcs, N_extrap_low=1024)[1] )(r)
         return xi_gg_1hcs
 
     def get_xi_gg_1hss(self, r, redshift):
@@ -1326,7 +1325,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_1hss(redshift)
-        xi_gg_1hss = ius(self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_1hss) )(r)
+        xi_gg_1hss = ius(self.fftlog_1h.r,fftlog.pk2xi(self.fftlog_1h.k, self.p_1hss, N_extrap_low=2048)[1] )(r)
+        #xi_gg_1hss = ius(self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_1hss)[1] )(r)
         return xi_gg_1hss
 
     def get_xi_gg_2hcc(self, rp, redshift):
@@ -1345,7 +1345,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcc(redshift)
-        xi_gg_2hcc = ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hcc) )(rp)
+        xi_gg_2hcc = ius(self.fftlog_2h.r,fftlog.pk2xi(self.fftlog_2h.k, self.p_2hcc, N_extrap_low=2048)[1] )(rp)
         #xi_gg_2hcc = ius(self.fftlog_2h.r, fftLog.pk2xi_fftlog_array(
         #    self.k_2h, self.r_2h, self.p_2hcc, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hcc
@@ -1366,7 +1366,8 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hcs(redshift)
-        xi_gg_2hcs = ius(self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hcs) )(rp)
+        xi_gg_2hcs = ius(self.fftlog_2h.r,fftlog.pk2xi(self.fftlog_2h.k, self.p_2hcs, N_extrap_low=2048)[1] )(rp)
+        #xi_gg_2hcs = ius(self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hcs)[1] )(rp)
         #xi_gg_2hcs = ius(self.fftlog_2h.r, fftLog.pk2xi_fftlog_array(
         #    self.k_2h, self.r_2h, self.p_2hcs, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hcs
@@ -1387,12 +1388,13 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_2hss(redshift)
-        xi_gg_2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hss) )(rp)
+        xi_gg_2hss = ius(self.fftlog_2h.r,fftlog.pk2xi(self.fftlog_2h.k, self.p_2hss, N_extrap_low=2048)[1] )(rp)
+        #xi_gg_2hss = ius( self.fftlog_2h.r, self.fftlog_2h.pk2xi(self.p_2hss)[1] )(rp)
         #xi_gg_2hss = ius(self.fftlog_2h.r, fftLog.pk2xi_fftlog_array(
         #    self.k_2h, self.r_2h, self.p_2hss, self.kr, self.dlnk_2h))(rp)
         return xi_gg_2hss
 
-    def get_ds(self, rp, redshift):
+    def get_ds(self, rp, redshift, dlnrp=0.0):
         """get_ds
 
         Compute weak lensing signal :math:`\Delta\Sigma(r_\mathrm{p})`.
@@ -1400,6 +1402,7 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: excess surface density in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1411,12 +1414,13 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, self.fftlog_1h.pk2dwp(p_tot) )(rp)
+        ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, p_tot, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #ds = self.rho_m/10**12 * ius( self.fftlog_1h.r, self.fftlog_1h.pk2dwp(p_tot, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         #ds = self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(
         #    self.k_1h, self.r_1h, p_tot, self.kr, self.dlnk_1h))(rp)
         return ds
 
-    def get_ds_cen(self, rp, redshift):
+    def get_ds_cen(self, rp, redshift, dlnrp=0.0):
         """get_ds_cen
 
         Compute weak lensing signal of (centered) central galaxies :math:`\Delta\Sigma_\mathrm{cen}(r_\mathrm{p})`.
@@ -1424,6 +1428,8 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
+
 
         Returns:
             numpy array: excess surface density of (centered) central galaxies in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1432,10 +1438,10 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen) )(rp)
+        return self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, self.p_cen, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen, self.kr, self.dlnk_1h))(rp)
 
-    def get_ds_cen_off(self, rp, redshift):
+    def get_ds_cen_off(self, rp, redshift, dlnrp=0.0):
         """get_ds_cen_off
 
         Compute weak lensing signal of off-centered central galaxies :math:`\Delta\Sigma_\mathrm{off-cen}(r_\mathrm{p})`.
@@ -1443,6 +1449,7 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: excess surface density of off-centered central galaxies in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1451,10 +1458,11 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen_off(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off) )(rp)
+        return self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, self.p_cen_off, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_cen_off, dlnrp=dlnrp, N_extrap_high=0)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen_off, self.kr, self.dlnk_1h))(rp)
 
-    def get_ds_sat(self, rp, redshift):
+    def get_ds_sat(self, rp, redshift, dlnrp=0.0):
         """get_ds_sat
 
         Compute weak lensing signal of satellite galaxies :math:`\Delta\Sigma_\mathrm{sat}(r_\mathrm{p})`.
@@ -1462,6 +1470,7 @@ class darkemu_x_hod(base_class):
         Args:
             rp (numpy array): 2 dimensional projected separation in :math:`h^{-1}\mathrm{Mpc}`
             redshift (float): redshift at which the lens galaxies are located
+            dlnrp (float): width of bin averaging in logarithmic scale. If dlnrp=0, no bin average.
 
         Returns:
             numpy array: excess surface density of satellite galaxies in :math:`h M_\odot \mathrm{pc}^{-2}`
@@ -1470,10 +1479,11 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_sat(redshift)
-        return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_sat) )(rp)
+        return self.rho_m/10**12 * ius( self.fftlog_1h.r, fftlog.pk2dwp(self.fftlog_1h.k, self.p_sat, N_extrap_high=0, dlnrp=dlnrp)[1] )(rp)
+        #return self.rho_m/10**12 * ius(self.fftlog_1h.r, self.fftlog_1h.pk2dwp(self.p_sat, dlnrp=dlnrp)[1] )(rp)
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_sat, self.kr, self.dlnk_1h))(rp)
 
-    def _get_wp_gm(self, rp, redshift):
+    def _get_wp_gm(self, rp, redshift, dlnrp=0.0):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
@@ -1481,7 +1491,7 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot) )(rp)
+        wp = ius( self.fftlog_1h.r, self.fftlog_1h.pk2wp(p_tot, dlnrp=dlnrp)[1] )(rp)
         return wp
 
     def _get_sigma_gm(self, rp, redshift):
@@ -1508,7 +1518,8 @@ class darkemu_x_hod(base_class):
         self._compute_p_sat(redshift)
 
         p_tot = self.p_cen + self.p_cen_off + self.p_sat
-        xi_gm = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot) )(r)
+        #xi_gm = ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(p_tot)[1] )(r)
+        xi_gm = ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, p_tot, 1.01, N_extrap_low=2048)[1])(r)
         return xi_gm
 
     def get_xi_gm_cen(self, r, redshift):
@@ -1527,7 +1538,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen(redshift)
-        return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_cen) )(r)
+        return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_cen, N_extrap_low=2048)[1])(r)
 
     def get_xi_gm_cen_off(self, r, redshift):
         """get_xi_gm_cen_off
@@ -1545,7 +1556,7 @@ class darkemu_x_hod(base_class):
         self._check_update_redshift(redshift)
 
         self._compute_p_cen_off(redshift)
-        return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_cen_off) )(r)
+        return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_cen_off, N_extrap_low=2048)[1])(r)
 
     def get_xi_gm_sat(self, r, redshift):
         """get_xi_gm_sat
@@ -1562,12 +1573,12 @@ class darkemu_x_hod(base_class):
 
         self._check_update_redshift(redshift)
         self._compute_p_sat(redshift)
-        return ius( self.fftlog_1h.r, self.fftlog_1h.pk2xi(self.p_sat) )(r)
+        return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_sat, N_extrap_low=2048)[1])(r)
 
-    def _get_wp_mm(self, rp, redshift):
+    def _get_wp_mm(self, rp, redshift, dlnrp=0.0):
         xi = self.get_xinl(self.fftlog_2h.r, redshift)
-        pk = self.fftlog_2h.xi2pk(xi)
-        wp = self.fftlog_2h.pk2wp(pk)
+        pk = self.fftlog_2h.xi2pk(xi)[1]
+        wp = self.fftlog_2h.pk2wp(pk, N_extrap_high=0, dlnrp=dlnrp)[1]
         #pk = fftLog.xi2pk_fftlog_array(
         #    self.r_2h, self.k_2h, xi, self.kr, self.dlnr_2h)
         #wp = ius(self.fftlog_2h.r, fftLog.pk2xiproj_J0_fftlog_array(
@@ -1803,3 +1814,48 @@ def _compute_tinker10_bias(redshift, Mh, massfunc):
     nu = delta_c/sigM
     b = 1.-A*nu**a/(nu**a+delta_c**a) + B*nu**b + C*nu**c
     return b
+
+def _get_wp_aniso(r, xi0, xi2, xi4, beta, pimax, dlnrp = 0.):
+    # Numerator of Eq. (48) of arxiv: 1206.6890 using mutipole expansion of anisotropic xi including Kaiser effect in Eq. (51) of the same paper.
+
+
+    rpi = np.logspace(-3, np.log10(pimax), 300) # Ok binning for 1% accuracy.
+
+    rp2, rpi2 = np.meshgrid(r, rpi)
+
+    s = (rp2**2+rpi2**2)**0.5
+    mu= rpi2/s
+
+    xi0s = (1+2.0/3.0*beta+1.0/5.0*beta**2)*ius(r, xi0)(s)
+    xi2s = (4.0/3.0*beta+4.0/7.0*beta**2)*ius(r, xi2)(s)
+    xi4s = 8.0/35.0*beta**2*ius(r, xi4)(s)
+
+    p0 = 1
+    p2 = eval_legendre(2, mu)
+    p4 = eval_legendre(4, mu)
+
+    xi_aniso = 2*(xi0s*p0+xi2s*p2+xi4s*p4)
+
+    wp_aniso = simps(xi_aniso, rpi, axis=0)
+
+    if dlnrp > 0.0:
+        wp_aniso = binave_array(r, wp_aniso, dlnrp)
+    return wp_aniso
+
+def binave_array(x, y, dlnx, D=2, nbin=100):
+    """
+    Assumes dlnx << np.diff(x).
+    Performs the forward bin average in dimension D.
+    ::math::
+        \\bar{y} = \\frac{1}{d\\ln x} \\int_{\\ln x}^{\\ln x+d\\ln x} x^D y(x)
+    """
+    X = np.linspace(0.0, dlnx, nbin)
+    x2d, X2d = np.meshgrid(x,X)
+    arg = x2d*np.exp(X2d)
+    y2d = ius(x, y)(arg)
+    
+    nom = integrate.simps(arg**D, X, axis=0)
+    
+    ybar = integrate.simps(y2d*arg**D, X, axis=0)/nom
+    
+    return ybar
