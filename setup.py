@@ -20,8 +20,7 @@ def find_from_doc(what='version'):
 
 packages = ['dark_emulator',
             'dark_emulator/darkemu','dark_emulator/darkemu/gp',
-            'dark_emulator/model_hod',
-            'dark_emulator/pyfftlog_interface']
+            'dark_emulator/model_hod','dark_emulator/fftlog']
 
 setup(
     name='dark_emulator',
