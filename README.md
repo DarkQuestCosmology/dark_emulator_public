@@ -15,7 +15,8 @@ or use conda:
 ```
    conda install -c nishimichi dark_emulator
 ```
-Please note that updates on conda are currently halted due to an unresolved issue in conda build. Therefore, we recommend using the version in pip or installing from the source using the following command.
+~~Please note that updates on conda are currently halted due to an unresolved issue in conda build. Therefore, we recommend using the version in pip or installing from the source using the following command.~~
+(19 Dec. 2023) v1.1.2 is now successfully built in anaconda. Conda users can install the latest version via the command above.
 
 If the above does not work for you, you may download the source files from this repository and install via
 ```
