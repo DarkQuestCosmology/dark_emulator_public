@@ -2,7 +2,6 @@ import os
 import numpy as np
 import logging
 from scipy import integrate
-from scipy.misc import derivative
 from collections import OrderedDict
 import logging
 
@@ -112,7 +111,7 @@ class cosmo_class:
 
     def get_Ez(self, z):
         Omegade0 = self.cparam[0, 2]
-        w = self.cparam[0,5]
+        w = self.cparam[0, 5]
         return np.sqrt(self.get_Omega0()*(1.+z)**3.+Omegade0*np.exp(3.*(1.+w)*np.log(1.+z)))
 
     def linearGrowth(self, z):
@@ -144,7 +143,9 @@ class cosmo_class:
         return self.f_from_a(a)
 
     def f_from_a(self, a):
-        return derivative(lambda t: a*np.log(self.Dgrowth_from_a(t)), a, dx=1e-6)
+        da = 1e-3
+        dlnD = np.log(self.Dgrowth_from_a(a+da)) - np.log(self.Dgrowth_from_a(a-da))
+        return dlnD/(2.0*da)*a
 
     def f_from_spapnum(self, i):
         z = self.get_redshift_predefined(i)

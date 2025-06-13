@@ -15,7 +15,7 @@ from ..darkemu.pklin import pklin_gp
 from ..darkemu.cosmo_util import cosmo_class
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
-from scipy.integrate import simps
+from scipy.integrate import simpson
 from scipy.special import eval_legendre
 from scipy import integrate
 from scipy import special
@@ -105,7 +105,7 @@ class darkemu_x_hod(base_class):
         if self.config["M_int_algorithm"] == "romberg":
             self.do_integration = integrate.romb
         elif self.config["M_int_algorithm"] == "simpson":
-            self.do_integration = integrate.simps
+            self.do_integration = integrate.simpson
 
         self.k_1h_mat = np.tile(self.fftlog_1h.k, (len(self.Mh), 1))
         self.k_2h_mat = np.tile(self.fftlog_2h.k, (len(self.Mh), 1))
@@ -255,7 +255,7 @@ class darkemu_x_hod(base_class):
         elif integration == "trapz":
             t = np.logspace(np.log10(mass_thre), 16, 512)
             dlogt = np.log(t[1]) - np.log(t[0])
-            dens = integrate.trapz(np.exp(dndM_interp(np.log(t)))*t, dx=dlogt)
+            dens = integrate.trapezoid(np.exp(dndM_interp(np.log(t)))*t, dx=dlogt)
         else:
             raise RuntimeError(
                 "You should specify valid integration algorithm: quad or trapz")
@@ -1148,13 +1148,13 @@ class darkemu_x_hod(base_class):
                     rp2d, rpi2d = np.meshgrid(r_ref, rpi)
                     s = (rp2d**2+rpi2d**2)**0.5
                     xi2d = xi_gg_spl(s)
-                    wp = 2*integrate.trapz(xi2d, rpi, axis=0)
+                    wp = 2*integrate.trapezoid(xi2d, rpi, axis=0)
                     wp = binave_array(r_ref, wp, dlnrp)
                     wp = ius(r_ref, wp)(rp)
                 else:
                     for rpnow in rp:
                         wp.append(
-                            2*integrate.trapz(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
+                            2*integrate.trapezoid(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
                     wp = np.array(wp)
         return wp
 
@@ -1835,7 +1835,7 @@ def _get_wp_aniso(r, xi0, xi2, xi4, beta, pimax, dlnrp = 0.):
 
     xi_aniso = 2*(xi0s*p0+xi2s*p2+xi4s*p4)
 
-    wp_aniso = simps(xi_aniso, rpi, axis=0)
+    wp_aniso = simpson(xi_aniso, rpi, axis=0)
 
     if dlnrp > 0.0:
         wp_aniso = binave_array(r, wp_aniso, dlnrp)
@@ -1853,8 +1853,8 @@ def binave_array(x, y, dlnx, D=2, nbin=100):
     arg = x2d*np.exp(X2d)
     y2d = ius(x, y)(arg)
     
-    nom = integrate.simps(arg**D, X, axis=0)
+    nom = integrate.simpson(arg**D, X, axis=0)
     
-    ybar = integrate.simps(y2d*arg**D, X, axis=0)/nom
+    ybar = integrate.simpson(y2d*arg**D, X, axis=0)/nom
     
     return ybar
