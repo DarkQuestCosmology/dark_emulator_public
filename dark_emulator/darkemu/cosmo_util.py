@@ -5,6 +5,12 @@ from scipy import integrate
 from collections import OrderedDict
 import logging
 
+try:
+    new_deriv_func = False
+    from scipy.misc import derivative
+except ImportError:
+    new_deriv_func = True
+
 cosm_range = OrderedDict((["omegab", [0.0211375, 0.0233625]],
                           ["omegac", [0.10782, 0.13178]],
                           ["Omagede", [0.54752, 0.82128]],
@@ -143,9 +149,12 @@ class cosmo_class:
         return self.f_from_a(a)
 
     def f_from_a(self, a):
-        da = 1e-3
-        dlnD = np.log(self.Dgrowth_from_a(a+da)) - np.log(self.Dgrowth_from_a(a-da))
-        return dlnD/(2.0*da)*a
+        if new_deriv_func:
+            da = 1e-3
+            dlnD = np.log(self.Dgrowth_from_a(a+da)) - np.log(self.Dgrowth_from_a(a-da))
+            return dlnD/(2.0*da)*a
+        else:
+            return derivative(lambda t: a*np.log(self.Dgrowth_from_a(t)), a, dx=1e-6)
 
     def f_from_spapnum(self, i):
         z = self.get_redshift_predefined(i)

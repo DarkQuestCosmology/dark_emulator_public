@@ -15,19 +15,29 @@ from ..darkemu.pklin import pklin_gp
 from ..darkemu.cosmo_util import cosmo_class
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from scipy.interpolate import RectBivariateSpline as rbs
-from scipy.integrate import simpson
+from scipy.integrate import romb
 from scipy.special import eval_legendre
 from scipy import integrate
 from scipy import special
 from scipy import ndimage
 from scipy import optimize
 from .. import fftlog
+
 try:
     from colossus.cosmology import cosmology as colcosmology
     from colossus.halo import concentration
 except:
     logging.warning('colossus is not installed.')
 
+try:
+    from scipy.integrate import simpson
+except ImportError:
+    from scipy.integrate import simps as simpson
+
+try:
+    from scipy.integrate import trapezoid
+except ImportError:
+    from scipy.integrate import trapz as trapezoid
 
 path_baryon = os.path.dirname(__file__)
 path_baryon = os.path.join(path_baryon, "..", "baryon")
@@ -103,9 +113,9 @@ class darkemu_x_hod(base_class):
         self.fftlog_2h = fftlog.fftbase(self.config['fft_num'], self.config['fft_logrmin_2h'], self.config['fft_logrmax_2h'], kr=1)
 
         if self.config["M_int_algorithm"] == "romberg":
-            self.do_integration = integrate.romb
+            self.do_integration = romb
         elif self.config["M_int_algorithm"] == "simpson":
-            self.do_integration = integrate.simpson
+            self.do_integration = simpson
 
         self.k_1h_mat = np.tile(self.fftlog_1h.k, (len(self.Mh), 1))
         self.k_2h_mat = np.tile(self.fftlog_2h.k, (len(self.Mh), 1))
@@ -255,7 +265,7 @@ class darkemu_x_hod(base_class):
         elif integration == "trapz":
             t = np.logspace(np.log10(mass_thre), 16, 512)
             dlogt = np.log(t[1]) - np.log(t[0])
-            dens = integrate.trapezoid(np.exp(dndM_interp(np.log(t)))*t, dx=dlogt)
+            dens = trapezoid(np.exp(dndM_interp(np.log(t)))*t, dx=dlogt)
         else:
             raise RuntimeError(
                 "You should specify valid integration algorithm: quad or trapz")
@@ -1148,13 +1158,13 @@ class darkemu_x_hod(base_class):
                     rp2d, rpi2d = np.meshgrid(r_ref, rpi)
                     s = (rp2d**2+rpi2d**2)**0.5
                     xi2d = xi_gg_spl(s)
-                    wp = 2*integrate.trapezoid(xi2d, rpi, axis=0)
+                    wp = 2*trapezoid(xi2d, rpi, axis=0)
                     wp = binave_array(r_ref, wp, dlnrp)
                     wp = ius(r_ref, wp)(rp)
                 else:
                     for rpnow in rp:
                         wp.append(
-                            2*integrate.trapezoid(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
+                            2*trapezoid(xi_gg_spl(np.sqrt(t**2+rpnow**2)), dx=dt))
                     wp = np.array(wp)
         return wp
 
@@ -1853,8 +1863,8 @@ def binave_array(x, y, dlnx, D=2, nbin=100):
     arg = x2d*np.exp(X2d)
     y2d = ius(x, y)(arg)
     
-    nom = integrate.simpson(arg**D, X, axis=0)
+    nom = simpson(arg**D, X, axis=0)
     
-    ybar = integrate.simpson(y2d*arg**D, X, axis=0)/nom
+    ybar = simpson(y2d*arg**D, X, axis=0)/nom
     
     return ybar
