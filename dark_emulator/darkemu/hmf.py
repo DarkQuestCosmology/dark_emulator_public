@@ -11,6 +11,11 @@ from .sigmaM import sigmaM_gp
 from . import cosmo_util
 from . import gp
 
+try:
+    from scipy.integrate import trapezoid
+except ImportError:
+    from scipy.integrate import trapz as trapezoid
+
 
 class hmf_gp:
 
@@ -102,7 +107,7 @@ class hmf_gp:
         elif integration == "trapz":
             t = np.linspace(mass_thre, 1e16, 4096)
             dt = t[1]-t[0]
-            dens = integrate.trapz(np.exp(dndM_interp(np.log(t))), dx=dt)
+            dens = trapezoid(np.exp(dndM_interp(np.log(t))), dx=dt)
         else:
             raise RuntimeError(
                 "You should specify valid integration algorithm: quad or trapz")
