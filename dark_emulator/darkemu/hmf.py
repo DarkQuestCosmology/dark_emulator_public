@@ -6,6 +6,11 @@ import numpy as np
 # from sklearn.externals import joblib
 from scipy import integrate
 from scipy import interpolate
+
+try:
+    from scipy.integrate import trapezoid as trapz
+except ImportError:
+    from scipy.integrate import trapz
 from scipy.interpolate import InterpolatedUnivariateSpline as ius
 from .sigmaM import sigmaM_gp
 from . import cosmo_util
@@ -102,7 +107,7 @@ class hmf_gp:
         elif integration == "trapz":
             t = np.linspace(mass_thre, 1e16, 4096)
             dt = t[1]-t[0]
-            dens = integrate.trapz(np.exp(dndM_interp(np.log(t))), dx=dt)
+            dens = trapz(np.exp(dndM_interp(np.log(t))), dx=dt)
         else:
             raise RuntimeError(
                 "You should specify valid integration algorithm: quad or trapz")
