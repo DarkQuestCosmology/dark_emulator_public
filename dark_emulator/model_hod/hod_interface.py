@@ -294,6 +294,9 @@ class darkemu_x_hod(base_class):
         self.ng = self.do_integration(
             self.dndM * (self.Ncen + self.Nsat) * self.Mh, dx=self.dlogMh)
         self.ng_computed = True
+        ng_min = 10**np.min(self.xi_auto.logdens_list)
+        if not np.isfinite(self.ng) or self.ng < ng_min:
+            logging.warning('Warning: the galaxy number density n_g=%g [(h^-1Mpc)^-3] is below %g, the lowest halo number density covered by the emulator. The HOD parameters put (almost) no galaxies in the halos the emulator can model, and the predicted statistics are unreliable or NaN.' % (self.ng, ng_min))
 
     def _compute_ng_cen(self):  # central galaxy number density
         self.ng_cen = self.do_integration(
@@ -529,7 +532,7 @@ class darkemu_x_hod(base_class):
                 if self.do_linear_correction:
                     xi_hh *= bias_correction[i]*bias_correction[j]
 
-                p_hh[i, j] = fftlog.xi2pk(self.fftlog_2h.k, xi_hh, 1.01, N_extrap_high=1024)[1]
+                p_hh[i, j] = fftlog.xi2pk(self.fftlog_2h.k, xi_hh, 1.01, N_pad=1024)[1]
                 #p_hh[i, j] = fftLog.xi2pk_fftlog_array(
                 #    self.r_2h, self.k_2h, xi_hh, self.kr, self.dlnr_2h)
                 if i != j:
