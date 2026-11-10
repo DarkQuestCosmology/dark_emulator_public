@@ -619,9 +619,10 @@ class darkemu_x_hod(base_class):
         for i in range(len(logdens_p)):
             logdens.append([logdens_m[i], logdens_p[i]])
 
+        # Match the matter propagator, linear power and subsequent Fourier transform.
         g = list()
-        gp = self.g1.get(self.fftlog_2h.k, redshift, logdens_p)
-        gm = self.g1.get(self.fftlog_2h.k, redshift, logdens_m)
+        gp = self.g1.get(self.fftlog_1h.k, redshift, logdens_p)
+        gm = self.g1.get(self.fftlog_1h.k, redshift, logdens_m)
 
         if self.do_linear_correction:
             bias_correction = np.zeros(len(Mh_de))
