@@ -12,6 +12,11 @@ import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as iuspline
 from scipy import integrate
 
+try:
+    from scipy.integrate import trapezoid as trapz
+except ImportError:
+    from scipy.integrate import trapz
+
 
 class base_class(object):
     """base_class
@@ -568,7 +573,7 @@ class base_class(object):
             dt = t[1]-t[0]
             for R2dnow in R2d:
                 wauto.append(
-                    2*integrate.trapz(xi3d(np.sqrt(t**2+R2dnow**2)), dx=dt))
+                    2*trapz(xi3d(np.sqrt(t**2+R2dnow**2)), dx=dt))
         else:
             raise RuntimeError(
                 "You should specify valid integration algorithm: quad or trapz")
@@ -1158,7 +1163,7 @@ class base_class(object):
         logks = np.log(ks)
         kR = ks * R
         integrant = ks**3*self.get_pklin(ks)*_window_tophat(kR)**2
-        return np.sqrt(integrate.trapz(integrant, logks)/(2.*np.pi**2))
+        return np.sqrt(trapz(integrant, logks)/(2.*np.pi**2))
 
 def _window_tophat(kR):
     return 3.*(np.sin(kR)-kR*np.cos(kR))/kR**3
