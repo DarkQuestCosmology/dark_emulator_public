@@ -1,0 +1,16 @@
+# local virtual environment (uv)
+.venv/
+uv.lock
+
+# build / packaging artifacts
+build/
+dist/
+*.egg-info/
+conda_recipe/
+conda-bld/
+
+# python caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store

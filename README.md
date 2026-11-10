@@ -15,8 +15,7 @@ or use conda:
 ```
    conda install -c nishimichi dark_emulator
 ```
-~~Please note that updates on conda are currently halted due to an unresolved issue in conda build. Therefore, we recommend using the version in pip or installing from the source using the following command.~~
-(19 Dec. 2023) v1.1.2 is now successfully built in anaconda. Conda users can install the latest version via the command above.
+(Nov. 2026) v1.2.0 is available on both pip and conda. This release supports recent SciPy versions (removed `simps`/`trapz`/`scipy.misc.derivative`) and fixes two bugs that slightly change numerical outputs: the FFTLog wrapper argument forwarding (#31) and the k-grid of the halo-matter propagator (#32).
 
 If the above does not work for you, you may download the source files from this repository and install via
 ```
