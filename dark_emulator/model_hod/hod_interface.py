@@ -70,6 +70,7 @@ class darkemu_x_hod(base_class):
        - **M_int_logMax** (*float*): Maximum :math:`\log_{10}(M_\mathrm{halo}/[h^{-1}\mathrm{M}_{\odot}])` used in the integration across halo mass (default: 15.9).
        - **M_int_k** (*int*): Sampling in the integration across halo mass which sets :math:`2^{\mathrm{M\_int\_k}}` (default: 5).
        - **c-M_relation** (*str*): Concentration-mass relation used for satellite distribution when NFW is used (see ``set_galaxy()``; default: 'diemer15'). The concentration is internally computed using `colossus <https://bdiemer.bitbucket.io/colossus/>`_, and a user can use a model listed in ``concentration models`` in `this webpage <https://bdiemer.bitbucket.io/colossus/halo_concentration.html>`_.
+       - **p_hh_k_lin** (*float*): Below this wavenumber in :math:`h\mathrm{Mpc}^{-1}`, the halo-halo power spectrum used for the 2-halo terms of galaxy clustering is set to follow the shape of the linear matter power spectrum, because the Fourier transform of the halo-halo correlation function is unreliable at the lowest wavenumbers of the internal grid (default: 0.01).
 
        Args:
            config (dict): a dictionary to specify configurations
@@ -96,6 +97,7 @@ class darkemu_x_hod(base_class):
         #self.config["los_int_pi_max"] = None
         #self.config["los_int_algorithm"] = "trapz"
         self.config["c-M_relation"] = "diemer15"
+        self.config["p_hh_k_lin"] = 0.01 # below this wavenumber [h/Mpc], the halo-halo power spectrum follows the shape of the linear power spectrum (see _fix_low_k_p_hh)
         self.config["p_hm_apodization"] = None # apodization with the scale sigma_k=self.config["p_hm_apodization"]/R200 is applied for satelite distribution computed from emulator. See def _compute_p_hm_satdist_emu() for details
         # override if specified in input
         if config is not None:
@@ -292,6 +294,9 @@ class darkemu_x_hod(base_class):
         self.ng = self.do_integration(
             self.dndM * (self.Ncen + self.Nsat) * self.Mh, dx=self.dlogMh)
         self.ng_computed = True
+        ng_min = 10**np.min(self.xi_auto.logdens_list)
+        if not np.isfinite(self.ng) or self.ng < ng_min:
+            logging.warning('Warning: the galaxy number density n_g=%g [(h^-1Mpc)^-3] is below %g, the lowest halo number density covered by the emulator. The HOD parameters put (almost) no galaxies in the halos the emulator can model, and the predicted statistics are unreliable or NaN.' % (self.ng, ng_min))
 
     def _compute_ng_cen(self):  # central galaxy number density
         self.ng_cen = self.do_integration(
@@ -527,7 +532,7 @@ class darkemu_x_hod(base_class):
                 if self.do_linear_correction:
                     xi_hh *= bias_correction[i]*bias_correction[j]
 
-                p_hh[i, j] = fftlog.xi2pk(self.fftlog_2h.k, xi_hh, 1.01, N_extrap_high=1024)[1]
+                p_hh[i, j] = fftlog.xi2pk(self.fftlog_2h.k, xi_hh, 1.01, N_pad=1024)[1]
                 #p_hh[i, j] = fftLog.xi2pk_fftlog_array(
                 #    self.r_2h, self.k_2h, xi_hh, self.kr, self.dlnr_2h)
                 if i != j:
@@ -537,7 +542,18 @@ class darkemu_x_hod(base_class):
                 if self.do_linear_correction:
                     p_hh[i, j] *= (self.pm_lin_k_2h_out_of_range/pm_lin)
 
+        # At the lowest wavenumbers (k ~ 1/r_max of the 2-halo FFTLog grid), p_hh obtained by xi2pk is set by the
+        # extrapolation of xi_hh beyond r_max and is unreliable; it can even become negative, in which case the
+        # subsequent low-k extrapolation in pk2wp/pk2xi produces NaNs (issue #27). Use the linear-theory shape there.
+        self._fix_low_k_p_hh(p_hh, self.pm_lin_k_2h_out_of_range if self.do_linear_correction else pm_lin)
+
         self.p_hh_base = p_hh
+
+    def _fix_low_k_p_hh(self, p_hh, pm_lin):
+        k = self.fftlog_2h.k
+        i_lin = np.searchsorted(k, self.config["p_hh_k_lin"])
+        if i_lin > 0:
+            p_hh[..., :i_lin] = p_hh[..., i_lin:i_lin+1] * (pm_lin[:i_lin] / pm_lin[i_lin])
 
     def _compute_p_hh(self, redshift):
         self._compute_p_hh_spl(redshift)
