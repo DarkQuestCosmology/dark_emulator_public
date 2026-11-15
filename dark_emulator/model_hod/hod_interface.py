@@ -57,7 +57,7 @@ def _get_uk(k, cvir, rvir):
     return f*(np.sin(eta)*(si_eta_1pc - si_eta) + np.cos(eta)*(ci_eta_1pc - ci_eta) - np.sin(eta*cvir)/eta/(1.+cvir))
 
 class darkemu_x_hod(base_class):
-    """darkemu_x_hod
+    r"""darkemu_x_hod
 
        This class holds cosmological parameters (see ``set_cosmology()``), HOD parameters, and other galaxy parameters (see ``set_galaxy()``), and computes galaxy-galaxy lensing, galaxy-galaxy clustering signal, and related correlation functions  based on these parameters. This class can be initialized through a dictionary that specifies the following configurations. With the default values, one can get :math:`\Delta\Sigma` and :math:`w_p` with an enough accuracy for `the HSC S16A analysis <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_.
 
@@ -176,7 +176,7 @@ class darkemu_x_hod(base_class):
                 "Got same cosmology. Keep quantities already computed.")
 
     def set_galaxy(self, gparams):
-        """set_galaxy
+        r"""set_galaxy
 
            This method sets galaxy parameter through a dictionary. See `Miyatake et al (2021) <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_ for the definition of galaxy parameters. Here is the list of keys.
 
@@ -185,7 +185,7 @@ class darkemu_x_hod(base_class):
                 - **logMmin** (*float*): Central HOD parameter, :math:`\log M_\mathrm{min}`
                 - **sigma_sq** (*float*): Central HOD parameter, :math:`\sigma^2`
                 - **logM1** (*float*): Satellite HOD parameter, :math:`\log M_1`
-                - **alpha** (*float*): Satellite HOD parameter, :math:`\\alpha`
+                - **alpha** (*float*): Satellite HOD parameter, :math:`\alpha`
                 - **kappa** (*float*): Satellite HOD parameter, :math:`\kappa`
 
            - off-centering parameters:
@@ -199,7 +199,7 @@ class darkemu_x_hod(base_class):
 
            - incompleteness parameters
 
-                - **alpha_inc** (*float*): Incompleteness parameter, :math:`\\alpha_\mathrm{inc}`
+                - **alpha_inc** (*float*): Incompleteness parameter, :math:`\alpha_\mathrm{inc}`
                 - **logM_inc** (*float*): Incompleteness parameter, :math:`\log M_\mathrm{inc}`
 
            Args:
@@ -1125,7 +1125,7 @@ class darkemu_x_hod(base_class):
         return ius(r, wp_rsd)(rp)
 
     def get_wp(self, rp, redshift, pimax=None, rsd=False, dlnrp=0.0):
-        """get_wp
+        r"""get_wp
 
         Compute projected galaxy auto-correlation function :math:`w_\mathrm{p}(r_\mathrm{p})`.
 
@@ -1186,7 +1186,7 @@ class darkemu_x_hod(base_class):
         return wp
 
     def get_wp_1hcs(self, rp, redshift, dlnrp=0.0):
-        """get_wp_1hcs
+        r"""get_wp_1hcs
 
         Compute projected 1-halo correlation function between central and satellite galaxies :math:`w_\mathrm{p, cen-sat}^\mathrm{1h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
 
@@ -1207,7 +1207,7 @@ class darkemu_x_hod(base_class):
         return wp1hcs
 
     def get_wp_1hss(self, rp, redshift, dlnrp=0.0):
-        """get_wp_1hss
+        r"""get_wp_1hss
 
         Compute projected 1-halo correlation function between satellite galaxies :math:`w_\mathrm{p, sat-sat}^\mathrm{1h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
 
@@ -1228,7 +1228,7 @@ class darkemu_x_hod(base_class):
         return wp1hss
 
     def get_wp_2hcc(self, rp, redshift, dlnrp=0.0):
-        """get_wp_2hcc
+        r"""get_wp_2hcc
 
         Compute projected 2-halo correlation function between central galaxies :math:`w_\mathrm{p, cen-cen}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
 
@@ -1249,7 +1249,7 @@ class darkemu_x_hod(base_class):
         return wp2hcc
 
     def get_wp_2hcs(self, rp, redshift, dlnrp=0.0):
-        """get_wp_2hcs
+        r"""get_wp_2hcs
 
         Compute projected 2-halo correlation function between central and satellite galaxies :math:`w_\mathrm{p, cen-sat}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
 
@@ -1270,7 +1270,7 @@ class darkemu_x_hod(base_class):
         return wp2hcs
 
     def get_wp_2hss(self, rp, redshift, dlnrp=0.0):
-        """get_wp_2hss
+        r"""get_wp_2hss
 
         Compute projected 2-halo correlation function between satellite galaxies :math:`w_\mathrm{p, sat-sat}^\mathrm{2h}(r_\mathrm{p})`. Note that the line-of-sight integration is performed using the zeroth order Bessel function, i.e., , :math:`\pi_{\mathrm{max}}=\infty`.
 
@@ -1338,9 +1338,9 @@ class darkemu_x_hod(base_class):
         return trapezoid(integrand, zs, axis=0)
 
     def get_xi_gg(self, r, redshift):
-        """get_xi_gg
+        r"""get_xi_gg
 
-        Compute galaxy auto-correlation function :math:`\\xi_\mathrm{gg}(r)`.
+        Compute galaxy auto-correlation function :math:`\xi_\mathrm{gg}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1365,9 +1365,9 @@ class darkemu_x_hod(base_class):
         return xi_gg
 
     def get_xi_gg_1hcs(self, r, redshift):
-        """get_xi_gg_1hcs
+        r"""get_xi_gg_1hcs
 
-        Compute 1-halo correlation function between central and satellite galaxies :math:`\\xi_\mathrm{cen-sat}^\mathrm{1h}(r)`.
+        Compute 1-halo correlation function between central and satellite galaxies :math:`\xi_\mathrm{cen-sat}^\mathrm{1h}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1384,9 +1384,9 @@ class darkemu_x_hod(base_class):
         return xi_gg_1hcs
 
     def get_xi_gg_1hss(self, r, redshift):
-        """get_xi_gg_1hss
+        r"""get_xi_gg_1hss
 
-        Compute 1-halo correlation function between satellite galaxies :math:`\\xi_\mathrm{sat-sat}^\mathrm{1h}(r)`.
+        Compute 1-halo correlation function between satellite galaxies :math:`\xi_\mathrm{sat-sat}^\mathrm{1h}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1404,9 +1404,9 @@ class darkemu_x_hod(base_class):
         return xi_gg_1hss
 
     def get_xi_gg_2hcc(self, rp, redshift):
-        """get_xi_gg_2hcc
+        r"""get_xi_gg_2hcc
 
-        Compute 2-halo correlation function between central galaxies :math:`\\xi_\mathrm{cen-cen}^\mathrm{2h}(r)`.
+        Compute 2-halo correlation function between central galaxies :math:`\xi_\mathrm{cen-cen}^\mathrm{2h}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1425,9 +1425,9 @@ class darkemu_x_hod(base_class):
         return xi_gg_2hcc
 
     def get_xi_gg_2hcs(self, rp, redshift):
-        """get_xi_gg_2hcs
+        r"""get_xi_gg_2hcs
 
-        Compute 2-halo correlation function between central and satellite galaxies :math:`\\xi_\mathrm{cen-sat}^\mathrm{2h}(r)`.
+        Compute 2-halo correlation function between central and satellite galaxies :math:`\xi_\mathrm{cen-sat}^\mathrm{2h}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1447,9 +1447,9 @@ class darkemu_x_hod(base_class):
         return xi_gg_2hcs
 
     def get_xi_gg_2hss(self, rp, redshift):
-        """get_xi_gg_2hss
+        r"""get_xi_gg_2hss
 
-        Compute 2-halo correlation function between satellite galaxies :math:`\\xi_\mathrm{sat-sat}^\mathrm{2h}(r)`.
+        Compute 2-halo correlation function between satellite galaxies :math:`\xi_\mathrm{sat-sat}^\mathrm{2h}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1469,7 +1469,7 @@ class darkemu_x_hod(base_class):
         return xi_gg_2hss
 
     def get_ds(self, rp, redshift, dlnrp=0.0):
-        """get_ds
+        r"""get_ds
 
         Compute weak lensing signal :math:`\Delta\Sigma(r_\mathrm{p})`.
 
@@ -1495,7 +1495,7 @@ class darkemu_x_hod(base_class):
         return ds
 
     def get_ds_cen(self, rp, redshift, dlnrp=0.0):
-        """get_ds_cen
+        r"""get_ds_cen
 
         Compute weak lensing signal of (centered) central galaxies :math:`\Delta\Sigma_\mathrm{cen}(r_\mathrm{p})`.
 
@@ -1516,7 +1516,7 @@ class darkemu_x_hod(base_class):
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen, self.kr, self.dlnk_1h))(rp)
 
     def get_ds_cen_off(self, rp, redshift, dlnrp=0.0):
-        """get_ds_cen_off
+        r"""get_ds_cen_off
 
         Compute weak lensing signal of off-centered central galaxies :math:`\Delta\Sigma_\mathrm{off-cen}(r_\mathrm{p})`.
 
@@ -1537,7 +1537,7 @@ class darkemu_x_hod(base_class):
         #return self.rho_m/10**12*ius(self.fftlog_1h.r, fftLog.pk2xiproj_J2_fftlog_array(self.k_1h, self.r_1h, self.p_cen_off, self.kr, self.dlnk_1h))(rp)
 
     def get_ds_sat(self, rp, redshift, dlnrp=0.0):
-        """get_ds_sat
+        r"""get_ds_sat
 
         Compute weak lensing signal of satellite galaxies :math:`\Delta\Sigma_\mathrm{sat}(r_\mathrm{p})`.
 
@@ -1573,9 +1573,9 @@ class darkemu_x_hod(base_class):
         return self.rho_m/10**12*wp
 
     def get_xi_gm(self, r, redshift):
-        """get_xi_gm
+        r"""get_xi_gm
 
-        Compute correlation function between galaxies and dark matter :math:`\\xi_\mathrm{gm}(r)`.
+        Compute correlation function between galaxies and dark matter :math:`\xi_\mathrm{gm}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1597,9 +1597,9 @@ class darkemu_x_hod(base_class):
         return xi_gm
 
     def get_xi_gm_cen(self, r, redshift):
-        """get_xi_gm_cen
+        r"""get_xi_gm_cen
 
-        Compute correlation function between (centered) central galaxies and dark matter :math:`\\xi_\mathrm{gm, cen}(r)`.
+        Compute correlation function between (centered) central galaxies and dark matter :math:`\xi_\mathrm{gm, cen}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1615,9 +1615,9 @@ class darkemu_x_hod(base_class):
         return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_cen, N_extrap_low=2048)[1])(r)
 
     def get_xi_gm_cen_off(self, r, redshift):
-        """get_xi_gm_cen_off
+        r"""get_xi_gm_cen_off
 
-        Compute correlation function between off-centered central galaxies and dark matter :math:`\\xi_\mathrm{gm, off-cen}(r)`.
+        Compute correlation function between off-centered central galaxies and dark matter :math:`\xi_\mathrm{gm, off-cen}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1633,9 +1633,9 @@ class darkemu_x_hod(base_class):
         return ius( self.fftlog_1h.r, fftlog.pk2xi(self.fftlog_1h.k, self.p_cen_off, N_extrap_low=2048)[1])(r)
 
     def get_xi_gm_sat(self, r, redshift):
-        """get_xi_gm_sat
+        r"""get_xi_gm_sat
 
-        Compute correlation function between satellite galaxies and dark matter :math:`\\xi_\mathrm{gm, sat}(r)`.
+        Compute correlation function between satellite galaxies and dark matter :math:`\xi_\mathrm{gm, sat}(r)`.
 
         Args:
             r (numpy array): 3 dimensional separation in :math:`h^{-1}\mathrm{Mpc}`
@@ -1660,7 +1660,7 @@ class darkemu_x_hod(base_class):
         return wp
 
     def get_ng(self, redshift):
-        """get_ng
+        r"""get_ng
 
         Compute galaxy abundance :math:`n_g`.
 
@@ -1682,7 +1682,7 @@ class darkemu_x_hod(base_class):
         return self.ng
 
     def get_ng_cen(self, redshift):
-        """get_ng_cen
+        r"""get_ng_cen
 
         Compute abundance of central galaxies :math:`n_{g,\mathrm{cen}}`.
 
