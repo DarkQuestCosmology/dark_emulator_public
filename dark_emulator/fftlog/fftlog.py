@@ -73,7 +73,7 @@ class fftlog(object):
 		return m, c_m
 
 	def fftlog(self, ell):
-		"""
+		r"""
 		Calculate F(y) = \int_0^\infty dx / x * f(x) * j_\ell(xy),
 		where j_\ell is the spherical Bessel func of order ell.
 		array y is set as y[:] = (ell+1)/x[::-1]
@@ -90,7 +90,7 @@ class fftlog(object):
 		return y[self.N_extrap_high:self.N-self.N_extrap_low], Fy[self.N_extrap_high:self.N-self.N_extrap_low]
     
 	def fftlog_binave(self, ell, bandwidth_dlny, D, alpha_pow):
-		"""
+		r"""
 		Calculate F(y) = \int_0^\infty dx / x * f(x) * j_\ell(xy),
 		where j_\ell is the spherical Bessel func of order ell.
 		array y is set as y[:] = (ell+1)/x[::-1]
@@ -108,7 +108,7 @@ class fftlog(object):
 		return y[self.N_extrap_high:self.N-self.N_extrap_low], Fy[self.N_extrap_high:self.N-self.N_extrap_low]
 
 	def fftlog_dj(self, ell):
-		"""
+		r"""
 		Calculate F(y) = \int_0^\infty dx / x * f(x) * j'_\ell(xy),
 		where j_\ell is the spherical Bessel func of order ell.
 		array y is set as y[:] = (ell+1)/x[::-1]
@@ -125,7 +125,7 @@ class fftlog(object):
 		return y[self.N_extrap_high:self.N-self.N_extrap_low], Fy[self.N_extrap_high:self.N-self.N_extrap_low]
 
 	def fftlog_ddj(self, ell):
-		"""
+		r"""
 		Calculate F(y) = \int_0^\infty dx / x * f(x) * j''_\ell(xy),
 		where j_\ell is the spherical Bessel func of order ell.
 		array y is set as y[:] = (ell+1)/x[::-1]

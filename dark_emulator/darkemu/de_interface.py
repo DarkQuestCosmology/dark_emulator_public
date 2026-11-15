@@ -19,7 +19,7 @@ except ImportError:
 
 
 class base_class(object):
-    """base_class
+    r"""base_class
 
         The base class of dark emulator.
         This holds all the individual emulator class objects for different statistical quantities.
@@ -49,7 +49,7 @@ class base_class(object):
         self.set_cosmology(self.cosmo.get_cosmology())
 
     def set_cosmology(self, cparam):
-        """set_cosmology
+        r"""set_cosmology
 
         Let the emulator know the cosmological parameters.
         This interface passes the 6 parameters to all the class objects
@@ -60,9 +60,9 @@ class base_class(object):
 
         :math:`\Omega_{m}=1-\Omega_{de},`
 
-        :math:`h=\sqrt{(\omega_b+\omega_c+\omega_{\\nu})/\Omega_m},`
+        :math:`h=\sqrt{(\omega_b+\omega_c+\omega_{\nu})/\Omega_m},`
 
-        where the neutrino density is fixed by :math:`\omega_{\\nu} = 0.00064` corresponding to the mass sum of 0.06 eV.
+        where the neutrino density is fixed by :math:`\omega_{\nu} = 0.00064` corresponding to the mass sum of 0.06 eV.
 
         Args:
             cparam (numpy array): Cosmological parameters
@@ -81,7 +81,7 @@ class base_class(object):
         self.set_cosmology(self.cosmo.get_cosmology_predefined(i))
 
     def get_sd(self, z):
-        """get_sd
+        r"""get_sd
 
         Compute the root mean square of the linear displacement, :math:`\sigma_d`,
         for the current cosmological model at redshift z.
@@ -95,7 +95,7 @@ class base_class(object):
         return self.Dgrowth_from_z(z)*self.g1.sd0
 
     def mass_to_dens(self, mass_thre, redshift, integration="quad"):
-        """mass_to_dens
+        r"""mass_to_dens
 
         Convert the halo mass threshold to the cumulative number density for the current
         cosmological model at redshift z.
@@ -111,7 +111,7 @@ class base_class(object):
         return self.massfunc.mass_to_dens(mass_thre, redshift, integration=integration)
 
     def dens_to_mass(self, dens, redshift, nint=20, integration="quad"):
-        """dens_to_mass
+        r"""dens_to_mass
 
         Convert the cumulative number density to the halo mass threshold for the current
         cosmological model at redshift z.
@@ -128,9 +128,9 @@ class base_class(object):
         return self.massfunc.dens_to_mass(dens, redshift, nint, integration=integration)
 
     def get_f_HMF(self, redshift):
-        """get_f_HMF
+        r"""get_f_HMF
 
-        Compute the multiplicity function :math:`f(\sigma)`, defined through :math:`dn/dM = f(\sigma)\\bar{\\rho}_m/M d \ln \sigma^{-1}/dM`.
+        Compute the multiplicity function :math:`f(\sigma)`, defined through :math:`dn/dM = f(\sigma)\bar{\rho}_m/M d \ln \sigma^{-1}/dM`.
 
         Args:
             redshift (float): redshift
@@ -148,7 +148,7 @@ class base_class(object):
         return self.massfunc.Mlist, D0*self.massfunc.sigs0, self.massfunc.f_HMF_func(D0*self.massfunc.sigs0, redshift)
 
     def get_nhalo(self, Mmin, Mmax, vol, redshift):
-        """get_nhalo
+        r"""get_nhalo
 
             Compute the mean number of halos in a given mass range and volume.
 
@@ -163,7 +163,7 @@ class base_class(object):
         return self.massfunc.get_nhalo(Mmin, Mmax, vol, redshift)
 
     def get_nhalo_tinker(self, Mmin, Mmax, vol, redshift):
-        """get_nhalo_tinker
+        r"""get_nhalo_tinker
 
             Compute the mean number of halos in a given mass range and volume based on the fitting formula by Tinker et al. (ApJ 688 (2008) 709).
 
@@ -178,7 +178,7 @@ class base_class(object):
         return self.massfunc.get_nhalo_tinker(Mmin, Mmax, vol, redshift)
 
     def get_xilin(self, xs):
-        """get_xilin
+        r"""get_xilin
 
             Compute the linear matter correlation function at z=0.
 
@@ -203,7 +203,7 @@ class base_class(object):
         return self.xiNL.get(xs, z)
 
     def get_xinl(self, xs, redshift):
-        """get_xinl
+        r"""get_xinl
 
             Compute the nonlinear matter correlation function.  Note that this is still in a development phase, and the accuracy has not yet been fully evaluated.
 
@@ -219,7 +219,7 @@ class base_class(object):
         return xi_dir * np.exp(-(xs/rswitch)**4) + xi_tree * (1-np.exp(-(xs/rswitch)**4))
 
     def get_pknl(self, k, z):
-        """get_pknl
+        r"""get_pknl
 
             Compute the nonlinear matter power spectrum. Note that this is still in a development phase, and the accuracy has not yet been fully evaluated.
 
@@ -236,7 +236,7 @@ class base_class(object):
         return iuspline(ks, pk)(k)
 
     def get_pklin(self, k):
-        """get_pklin
+        r"""get_pklin
 
             Compute the linear matter power spectrum at z=0.
 
@@ -253,7 +253,7 @@ class base_class(object):
         return Dp**2 * self.pkL.get(x)
 
     def get_pklin_from_z(self, k, z):
-        """get_pklin_z
+        r"""get_pklin_z
 
             Compute the linear matter power spectrum.
 
@@ -281,9 +281,9 @@ class base_class(object):
         return self.xi_auto.get(xs, redshift, logdens1, logdens2)
 
     def get_xiauto(self, xs, logdens1, logdens2, redshift):
-        """get_xiauto
+        r"""get_xiauto
 
-            Compute the halo-halo correlation function, :math:`\\xi_\mathrm{hh}(x;n_1,n_2)`, bwtween 2 mass threshold halo samples specified by the corresponding cumulative number densities.
+            Compute the halo-halo correlation function, :math:`\xi_\mathrm{hh}(x;n_1,n_2)`, bwtween 2 mass threshold halo samples specified by the corresponding cumulative number densities.
 
             Args:
                 xs (numpy array): Separations in :math:`[h^{-1}\mathrm{Mpc}]`
@@ -349,9 +349,9 @@ class base_class(object):
         return iuspline(xs, xi_tot)
 
     def get_xiauto_massthreshold(self, xs, Mthre, redshift):
-        """get_xiauto_massthreshold
+        r"""get_xiauto_massthreshold
 
-            Compute the halo-halo correlation function, :math:`\\xi_\mathrm{hh}(x;>M_\mathrm{th})`,  for a mass threshold halo sample.
+            Compute the halo-halo correlation function, :math:`\xi_\mathrm{hh}(x;>M_\mathrm{th})`,  for a mass threshold halo sample.
 
             Args:
                 xs (numpy array): Separations in :math:`[h^{-1}\mathrm{Mpc}]`
@@ -365,9 +365,9 @@ class base_class(object):
         return self.get_xiauto(xs, logdens, logdens, redshift)
 
     def get_xiauto_mass(self, xs, M1, M2, redshift):
-        """get_xiauto_mass
+        r"""get_xiauto_mass
 
-            Compute the halo-halo correlation function, :math:`\\xi_\mathrm{hh}(x;M_1,M_2)`, between 2 halo samples with mass :math:`M_1` and :math:`M_2`.
+            Compute the halo-halo correlation function, :math:`\xi_\mathrm{hh}(x;M_1,M_2)`, between 2 halo samples with mass :math:`M_1` and :math:`M_2`.
             Args:
                 xs (numpy array): Separations in :math:`[h^{-1}\mathrm{Mpc}]`
                 M1 (float): Halo mass of the first sample in :math:`[h^{-1}M_\odot]`
@@ -414,7 +414,7 @@ class base_class(object):
         return iuspline(k, pk)(ks)
 
     def get_phh(self,ks,logdens1,logdens2,redshift):
-        """get_phh
+        r"""get_phh
 
             Compute the halo-halo power spectrum :math:`P_{hh}(k;n_1,n_2)` between 2 mass threshold halo samples specified by the corresponding cumulative number densities.
 
@@ -475,7 +475,7 @@ class base_class(object):
 
 
     def get_phh_massthreshold(self,ks,Mthre,redshift):
-        """get_phh_massthreshold
+        r"""get_phh_massthreshold
 
             Compute the halo-halo auto power spectrum :math:`P_{hh}(k;>M_\mathrm{th})` for a mass threshold halo sample.
 
@@ -491,7 +491,7 @@ class base_class(object):
         return self.get_phh(ks,logdens,logdens,redshift)
 
     def get_phh_mass(self,ks,M1,M2,redshift):
-        """get_phh_mass
+        r"""get_phh_mass
 
             Compute the halo-halo power spectrum :math:`P_{hh}(k;M_1,M_2)` between 2 halo samples with mass :math:`M_1` and :math:`M_2`.
 
@@ -525,7 +525,7 @@ class base_class(object):
 
 
     def get_wauto(self, R2d, logdens1, logdens2, redshift):
-        """get_wauto
+        r"""get_wauto
 
             Compute the projected halo-halo correlation function :math:`w_{hh}(R;n_1,n_2)` for 2 mass threshold halo samples specified by the corresponding cumulative number densities.
 
@@ -547,7 +547,7 @@ class base_class(object):
         return iuspline(rp, wp)(R2d)
 
     def get_wauto_cut(self, R2d, logdens1, logdens2, redshift, pimax, integration="quad"):
-        """get_wauto_cut
+        r"""get_wauto_cut
 
             Compute the projected halo-halo correlation function :math:`w_{hh}(R;n_1,n_2)` for 2 mass threshold halo samples specified by the corresponding cumulative number densities.
             Unlike get_wauto, this function considers a finite width for the radial integration, from :math:`-\pi_\mathrm{max}` to :math:`\pi_\mathrm{max}`.
@@ -580,7 +580,7 @@ class base_class(object):
         return np.array(wauto)
 
     def get_wauto_massthreshold(self, R2d, Mthre, redshift):
-        """get_wauto_massthreshold
+        r"""get_wauto_massthreshold
 
             Compute the projected halo-halo correlation function :math:`w_{hh}(R;>M_\mathrm{th})` for a mass threshold halo sample.
 
@@ -596,7 +596,7 @@ class base_class(object):
         return self.get_wauto(R2d, logdens, logdens, redshift)
 
     def get_wauto_masthreshold_cut(self, R2d, Mthre, redshift, pimax, integration="quad"):
-        """get_wauto_massthreshold_cut
+        r"""get_wauto_massthreshold_cut
 
             Compute the projected halo-halo correlation function :math:`w_{hh}(R;>M_\mathrm{th})` for a mass threshold halo sample.
             Unlike get_wauto_massthreshold, this function considers a finite width for the radial integration, from :math:`-\pi_\mathrm{max}` to :math:`\pi_\mathrm{max}`.
@@ -615,7 +615,7 @@ class base_class(object):
 
 
     def get_wauto_mass(self, R2d, M1, M2, redshift):
-        """get_wauto_mass
+        r"""get_wauto_mass
 
             Compute the projected halo-halo correlation function :math:`w_{hh}(R;M_1,M_2)` for 2 mass threshold halo samples.
 
@@ -650,7 +650,7 @@ class base_class(object):
         return numer / denom
 
     def get_wauto_mass_cut(self, R2d, M1, M2, redshift, pimax):
-        """get_wauto_mass_cut
+        r"""get_wauto_mass_cut
 
             Compute the projected halo-halo correlation function :math:`w_{hh}(R;M_1,M_2)` for 2 mass threshold halo samples.
             Unlike get_wauto_mass, this function considers a finite width for the radial integration, from :math:`-\pi_\mathrm{max}` to :math:`\pi_\mathrm{max}`.
@@ -730,9 +730,9 @@ class base_class(object):
         return self.xi_cross.get(xs, redshift, logdens)
 
     def get_xicross(self, xs, logdens, redshift):
-        """get_xicross
+        r"""get_xicross
 
-            Compute the halo-matter cross correlation function :math:`\\xi_{hm}(x;n_h)` for a mass threshold halo sample specified by the corresponding cumulative number density.
+            Compute the halo-matter cross correlation function :math:`\xi_{hm}(x;n_h)` for a mass threshold halo sample specified by the corresponding cumulative number density.
 
             Args:
                 xs (numpy array): Separations in :math:`[h^{-1}\mathrm{Mpc}]`
@@ -748,9 +748,9 @@ class base_class(object):
         return xi_dir * np.exp(-(xs/rswitch)**4) + xi_tree * (1-np.exp(-(xs/rswitch)**4))
 
     def get_xicross_massthreshold(self, xs, Mthre, redshift):
-        """get_xicross_massthreshold
+        r"""get_xicross_massthreshold
 
-            Compute the halo-matter cross correlation function :math:`\\xi_{hm}(x;>M_\mathrm{th})` for a mass threshold halo sample.
+            Compute the halo-matter cross correlation function :math:`\xi_{hm}(x;>M_\mathrm{th})` for a mass threshold halo sample.
 
             Args:
                 xs (numpy array): Separations in :math:`[h^{-1}\mathrm{Mpc}]`
@@ -764,9 +764,9 @@ class base_class(object):
         return self.get_xicross(xs, logdens, redshift)
 
     def get_xicross_mass(self, xs, M, redshift):
-        """get_xicross_mass
+        r"""get_xicross_mass
 
-            Compute the halo-matter cross correlation function :math:`\\xi_{hm}(x;M)` for halos with mass :math:`M`.
+            Compute the halo-matter cross correlation function :math:`\xi_{hm}(x;M)` for halos with mass :math:`M`.
 
             Args:
                 xs (numpy array): Separations in :math:`[h^{-1}\mathrm{Mpc}]`
@@ -797,7 +797,7 @@ class base_class(object):
         return iuspline(k, pk)(ks)
 
     def get_phm(self,ks,logdens,redshift):
-        """get_phm
+        r"""get_phm
 
         Compute the halo-matter cross power spectrum :math:`P_{hm}(k;n_h)` for a mass threshold halo sample specified by the corresponding cumulative number density.
 
@@ -837,7 +837,7 @@ class base_class(object):
         return iuspline(k, pk)(ks)
 
     def get_phm_massthreshold(self,ks,Mthre,redshift):
-        """get_phm_massthreshold
+        r"""get_phm_massthreshold
 
         Compute the halo-matter cross power spectrum :math:`P_{hm}(k;>M_\mathrm{th})` for a mass threshold halo sample.
 
@@ -853,7 +853,7 @@ class base_class(object):
         return self.get_phm(ks,logdens,redshift)
 
     def get_phm_mass(self,ks,M,redshift):
-        """get_phm_mass
+        r"""get_phm_mass
 
         Compute the halo-matter cross power spectrum :math:`P_{hm}(k;M)` for halos with mass :math:`M`.
 
@@ -888,7 +888,7 @@ class base_class(object):
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, dwp)(R2d)
 
     def get_DeltaSigma(self, R2d, logdens, redshift):
-        """get_DeltaSigma
+        r"""get_DeltaSigma
 
         Compute the halo-galaxy lensing signal, the excess surface mass density, :math:`\Delta\Sigma(R;n_h)`, for a mass threshold halo sample specified by the corresponding cumulative number density.
 
@@ -910,7 +910,7 @@ class base_class(object):
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, dwp)(R2d)
 
     def get_DeltaSigma_massthreshold(self, R2d, Mthre, redshift):
-        """get_DeltaSigma_massthreshold
+        r"""get_DeltaSigma_massthreshold
 
         Compute the halo-galaxy lensing signal, the excess surface mass density, :math:`\Delta\Sigma(R;>M_\mathrm{th})`, for a mass threshold halo sample.
 
@@ -926,7 +926,7 @@ class base_class(object):
         return self.get_DeltaSigma(R2d, logdens, redshift)
 
     def get_DeltaSigma_mass(self, R2d, M, redshift):
-        """get_DeltaSigma_mass
+        r"""get_DeltaSigma_mass
 
         Compute the halo-galaxy lensing signal, the excess surface mass density, :math:`\Delta\Sigma(R;M)`, for halos with mass :math:`M`.
 
@@ -963,7 +963,7 @@ class base_class(object):
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
 
     def get_Sigma(self, R2d, logdens, redshift):
-        """get_Sigma
+        r"""get_Sigma
 
         Compute the surface mass density, :math:`\Sigma(R;n_h)`, for a mass threshold halo sample specified by the corresponding cumulative number density.
 
@@ -984,7 +984,7 @@ class base_class(object):
         return self.cosmo.get_Omega0() * self.cosmo.rho_cr / 1e12 * iuspline(rp, wp)(R2d)
 
     def get_Sigma_massthreshold(self, R2d, Mthre, redshift):
-        """get_Sigma_massthreshold
+        r"""get_Sigma_massthreshold
 
         Compute the surface mass density, :math:`\Sigma(R;>M_\mathrm{th})`, for a mass threshold halo sample.
 
@@ -1000,7 +1000,7 @@ class base_class(object):
         return self.get_Sigma(R2d, logdens, redshift)
 
     def get_Sigma_mass(self, R2d, M, redshift):
-        """get_Sigma_mass
+        r"""get_Sigma_mass
 
         Compute the surface mass density, :math:`\Sigma(R;M)`, for halos with mass :math:`M`.
 
@@ -1027,7 +1027,7 @@ class base_class(object):
         return self.g1.get_bd(redshift, logdens)
 
     def get_bias(self, logdens, redshift):
-        """get_bias
+        r"""get_bias
 
         Compute the linear bias for a mass threshold halo sample specified by the corresponding cumulative number density.
 
@@ -1041,7 +1041,7 @@ class base_class(object):
         return self.g1.get_bias(redshift, logdens)
 
     def get_bias_massthreshold(self, Mth, redshift):
-        """get_bias_massthreshold
+        r"""get_bias_massthreshold
 
         Compute the linear bias, :math:`b(>M_\mathrm{th})`, for a mass threshold halo sample.
 
@@ -1057,7 +1057,7 @@ class base_class(object):
         return self.get_bias(logdens, redshift)
 
     def get_bias_mass(self, M, redshift):
-        """get_bias_mass
+        r"""get_bias_mass
 
         Compute the linear bias for halos with mass :math:`M`.
 
@@ -1109,7 +1109,7 @@ class base_class(object):
         return self.cosmo.Dgrowth_from_snapnum(i)
 
     def f_from_z(self, z):
-        """f_from_z
+        r"""f_from_z
 
         Compute the linear growth rate, :math:`f = \mathrm{d}\ln D_+/\mathrm{d}\ln a`, at redshift z.
 
@@ -1121,7 +1121,7 @@ class base_class(object):
         return self.cosmo.f_from_z(z)
 
     def f_from_a(self, a):
-        """f_from_a
+        r"""f_from_a
 
         Compute the linear growth rate, :math:`f = \mathrm{d}\ln D_+/\mathrm{d}\ln a`, at scale factor a.
 
@@ -1136,7 +1136,7 @@ class base_class(object):
         return self.cosmo.f_from_snampum(i)
 
     def get_cosmology(self):
-        """get_cosmology
+        r"""get_cosmology
 
         Obtain the cosmological parameters currently set to the emulator.
 
@@ -1146,7 +1146,7 @@ class base_class(object):
         return self.cosmo.get_cosmology()
 
     def get_sigma8(self, logkmin=-4, logkmax=1, nint=100):
-        """get_sigma8
+        r"""get_sigma8
 
             Compute :math:`\sigma_8` for the current cosmology.
 
