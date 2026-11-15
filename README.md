@@ -15,7 +15,7 @@ or use conda:
 ```
    conda install -c nishimichi dark_emulator
 ```
-(Nov. 2026) v1.2.1 is available on both pip and conda. It fixes NaN outputs of `wp` and `xi_gg` for some combinations of cosmological and HOD parameters (#27), and warns when the HOD parameters give a galaxy number density below the range covered by the emulator. v1.2.0 supports recent SciPy versions (removed `simps`/`trapz`/`scipy.misc.derivative`) and fixes two bugs that slightly change numerical outputs: the FFTLog wrapper argument forwarding (#31) and the k-grid of the halo-matter propagator (#32).
+(Nov. 2026) v1.2.2 is available on both pip and conda. It adds the angular correlation function of galaxies, `get_wtheta`, to the HOD module (#24), and `pip install` now also installs `colossus`. v1.2.1 fixes NaN outputs of `wp` and `xi_gg` for some combinations of cosmological and HOD parameters (#27), and warns when the HOD parameters give a galaxy number density below the range covered by the emulator. v1.2.0 supports recent SciPy versions (removed `simps`/`trapz`/`scipy.misc.derivative`) and fixes two bugs that slightly change numerical outputs: the FFTLog wrapper argument forwarding (#31) and the k-grid of the halo-matter propagator (#32).
 
 If the above does not work for you, you may download the source files from this repository and install via
 ```
