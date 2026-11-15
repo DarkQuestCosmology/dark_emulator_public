@@ -47,14 +47,6 @@ try:
 except ImportError:
     from scipy.integrate import trapz as trapezoid
 
-path_baryon = os.path.dirname(__file__)
-path_baryon = os.path.join(path_baryon, "..", "baryon")
-sys.path.append(path_baryon)
-try:
-    from wk_baryon import return_wk
-except ImportError:
-    pass
-
 rho_cr = 2.77536627e11 # [M_sun/h] / [Mpc/h]^3\n"
 
 def _get_uk(k, cvir, rvir):
@@ -214,6 +206,9 @@ class darkemu_x_hod(base_class):
               gparams (dict): a dictionary to specify galaxy parameters
         """
         # gparams includes galaxy-related parameters such as HOD, offcentering, incompleteness, and pi_max.
+        if "baryon" in gparams:
+            raise NotImplementedError(
+                "The 'baryon' galaxy parameter is not supported in the public version of dark_emulator.")
         if self.gparams != gparams:
             if self.gparams and self.gparams["sat_dist_type"] != gparams["sat_dist_type"]:
                 self.p_hm_satdist_computed = False
@@ -713,20 +708,6 @@ class darkemu_x_hod(base_class):
             p_hm[i] = self.fftlog_1h.xi2pk(self.xi_hm[i], 1.01, N_extrap_high=1024)[1]
             #p_hm[i] = fftLog.xi2pk_fftlog_array(
             #    self.r_1h, self.k_1h, self.xi_hm[i], self.kr, self.dlnr_1h)
-            if "baryon" in list(self.gparams.keys()):
-                baryonic_params = self.gparams["baryon"]
-                Mc = 10**baryonic_params[0]
-                beta = baryonic_params[1]
-                eta = baryonic_params[2]
-                M200 = self.Mh[i]
-                c200 = self._concentration(M200, redshift)
-                #M200 = 1e14
-                #c200 = 4
-                k_1h_tmp = np.logspace(
-                    np.log10(self.fftlog_1h.k[0]), np.log10(self.fftlog_1h.k[-1]), 300)
-                wk = return_wk(k_1h_tmp, Mc, beta, eta, M200, c200, redshift)
-                wk = (ius(k_1h_tmp, wk))(self.fftlog_1h.k)
-                p_hm[i] *= wk
             if self.do_linear_correction:
                 p_hm[i] *= (self.pm_lin_k_1h_out_of_range/pm_lin)
 
