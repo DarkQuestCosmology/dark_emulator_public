@@ -1290,6 +1290,53 @@ class darkemu_x_hod(base_class):
         #wp2hss = ius(self.fftlog_2h.r, fftlog.pk2wp(self.fftlog_2h.k, self.p_2hss, 1.01, N_extrap_low=2048)[1] )(rp)
         return wp2hss
 
+    def get_wtheta(self, theta, zs, dndz):
+        r"""get_wtheta
+
+        Compute the angular auto-correlation function of galaxies :math:`w(\theta)` for a sample with the redshift distribution :math:`dN/dz`, using the Limber approximation in the flat-sky limit (e.g., Eq. (49) of `Harikane et al. 2016 <https://ui.adsabs.harvard.edu/abs/2016ApJ...821..123H/abstract>`_):
+
+        .. math::
+            w(\theta) = \int dz\, \left[\frac{dN}{dz}\right]^2 \frac{H(z)}{c} \int \frac{k\,dk}{2\pi} P_\mathrm{gg}(k, z) J_0[k\chi(z)\theta] = \int dz\, \left[\frac{dN}{dz}\right]^2 \frac{H(z)}{c}\, w_\mathrm{p}(\chi(z)\theta; z),
+
+        where :math:`\chi(z)` is the comoving distance and :math:`w_\mathrm{p}` is the projected correlation function with :math:`\pi_\mathrm{max}=\infty` (see ``get_wp``). The HOD parameters are assumed to be independent of redshift over the range of ``zs``. Redshift-space distortions and magnification bias are not included, and the Limber approximation becomes inaccurate at large angles for a narrow :math:`dN/dz`.
+
+        Args:
+            theta (numpy array): angular separations in degrees
+            zs (numpy array): redshifts at which ``dndz`` is given, in ascending order. The integral over redshift is performed with the trapezoidal rule on this grid, so ``zs`` should sample ``dndz`` well (typically a few tens of points). Each redshift should be within the range supported by the emulator.
+            dndz (numpy array): redshift distribution of galaxies :math:`dN/dz` at ``zs``. It does not have to be normalized; it is normalized internally so that :math:`\int dz\, dN/dz = 1`.
+
+        Returns:
+            numpy array: angular correlation function :math:`w(\theta)` (dimensionless)
+        """
+        theta = np.atleast_1d(np.asarray(theta, dtype=float))
+        zs = np.asarray(zs, dtype=float)
+        dndz = np.asarray(dndz, dtype=float)
+        if zs.ndim != 1 or zs.shape != dndz.shape or len(zs) < 2:
+            raise ValueError("zs and dndz should be 1d arrays of the same length (>= 2).")
+        if np.any(np.diff(zs) <= 0.):
+            raise ValueError("zs should be in ascending order.")
+        if np.any(dndz < 0.):
+            raise ValueError("dndz should be non-negative.")
+        norm = trapezoid(dndz, zs)
+        if norm <= 0.:
+            raise ValueError("dndz should have a positive integral.")
+        dndz = dndz / norm
+
+        # distances in the input cosmology (not the one moved to the edge of the supported range)
+        cosmo = cosmo_class()
+        cosmo.cparam = np.copy(self.cparams_orig).reshape(1, 6)
+        hubble_dist = cosmo_util.constants.c_km_s / 100.  # c/H0 in Mpc/h
+
+        theta_rad = np.deg2rad(theta)
+        integrand = np.zeros((len(zs), len(theta)))
+        for i, z in enumerate(zs):
+            if dndz[i] == 0.:
+                continue
+            chi = cosmo.get_comoving_distance(z)
+            dzdchi = cosmo.get_Ez(z) / hubble_dist  # H(z)/c in h/Mpc
+            integrand[i] = dndz[i]**2 * dzdchi * self.get_wp(chi * theta_rad, z)
+        return trapezoid(integrand, zs, axis=0)
+
     def get_xi_gg(self, r, redshift):
         """get_xi_gg
 
