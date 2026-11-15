@@ -26,8 +26,16 @@ from .. import fftlog
 try:
     from colossus.cosmology import cosmology as colcosmology
     from colossus.halo import concentration
-except:
+    _colossus_available = True
+except Exception:
+    _colossus_available = False
     logging.warning('colossus is not installed.')
+
+
+def _require_colossus():
+    if not _colossus_available:
+        raise ImportError("colossus is required for the NFW satellite distribution (sat_dist_type='NFW'). "
+                          "Install it with `pip install colossus`.")
 
 try:
     from scipy.integrate import simpson
@@ -764,10 +772,12 @@ class darkemu_x_hod(base_class):
             [ius(self.fftlog_1h.k, p_hm_dist[i], ext=3)(self.fftlog_2h.k) for i in range(len(self.Mh))])
 
     def _concentration(self, cosmo, M, z, model='diemer15'):
+        _require_colossus()
         c200m = concentration.concentration(M, '200m', z, model=model)
         return c200m
 
     def _compute_p_hm_satdist_NFW(self, redshift):
+        _require_colossus()
         R200 = (3*self._convert_dens_to_mass(10**np.array(self.xi_cross.logdens_list), redshift,
                                     integration=self.config["hmf_int_algorithm"])/(4.*np.pi*self.rho_m)/200.)**(1./3.)
 

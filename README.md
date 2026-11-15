@@ -27,6 +27,7 @@ In that case, you need to install `george` (a software package for the Gaussian 
 conda install -c conda-forge george
 pip install colossus
 ```
+`colossus` is used for the NFW satellite distribution (`sat_dist_type='NFW'`) in the HOD module. `pip install dark_emulator` installs it automatically, but it is not available on conda-forge, so conda users need to run `pip install colossus` in addition.
 From version 1.1.0, `dark_emulator` uses FFTLog implementation by [Fang et al (2019); arXiv:1911.11947](https://arxiv.org/abs/1911.11947).
 
 ## Usage
