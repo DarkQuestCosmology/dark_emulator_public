@@ -56,6 +56,55 @@ def _get_uk(k, cvir, rvir):
     si_eta, ci_eta = special.sici(eta)
     return f*(np.sin(eta)*(si_eta_1pc - si_eta) + np.cos(eta)*(ci_eta_1pc - ci_eta) - np.sin(eta*cvir)/eta/(1.+cvir))
 
+_HOD_TYPES = ("standard", "independent")
+_CEN_MODELS = {  # cen_model -> required central parameters (hod_type="independent")
+    "hmq": ("p_max", "sigma_M", "logMc", "gamma"),
+    "asymsigmoid": ("f_max", "logMmin", "a", "b"),
+}
+_SAT_MODELS = {  # sat_model -> required satellite parameters (hod_type="independent")
+    "zheng_cutoff": ("A_s", "logM1", "alpha", "logMcut", "logMmax"),
+    "zheng2005": ("A_s", "logM1", "alpha", "logMcut"),
+}
+_STANDARD_HOD_PARAMS = ("logMmin", "sigma_sq", "logM1", "alpha", "kappa")
+_COMMON_PARAMS = ("poff", "Roff", "sat_dist_type")
+
+
+def _validate_gparams(gparams):
+    """Check model names and that every parameter the chosen HOD needs is present.
+
+    Raises ValueError with the list of missing keys, so that a forgotten
+    parameter is never silently replaced by a default value.
+    """
+    hod_type = gparams.get("hod_type", "standard")
+    if hod_type not in _HOD_TYPES:
+        raise ValueError(
+            f"Unknown hod_type: {hod_type!r} (options: {', '.join(map(repr, _HOD_TYPES))})")
+
+    if hod_type == "independent":
+        cen_model = gparams.get("cen_model", "hmq")
+        sat_model = gparams.get("sat_model", "zheng_cutoff")
+        if cen_model not in _CEN_MODELS:
+            raise ValueError(
+                f"Unknown cen_model: {cen_model!r} "
+                f"(options: {', '.join(map(repr, _CEN_MODELS))})")
+        if sat_model not in _SAT_MODELS:
+            raise ValueError(
+                f"Unknown sat_model: {sat_model!r} "
+                f"(options: {', '.join(map(repr, _SAT_MODELS))})")
+        required = _CEN_MODELS[cen_model] + _SAT_MODELS[sat_model]
+        label = (f"hod_type='independent' with cen_model={cen_model!r}, "
+                 f"sat_model={sat_model!r}")
+    else:
+        required = _STANDARD_HOD_PARAMS
+        label = "hod_type='standard'"
+
+    missing = [k for k in required + _COMMON_PARAMS if gparams.get(k) is None]
+    if missing:
+        raise ValueError(f"{label} requires {', '.join(missing)}")
+    if ("alpha_inc" in gparams) != ("logM_inc" in gparams):
+        raise ValueError("alpha_inc and logM_inc must be given together")
+
+
 class darkemu_x_hod(base_class):
     """darkemu_x_hod
 
@@ -178,13 +227,56 @@ class darkemu_x_hod(base_class):
 
            This method sets galaxy parameter through a dictionary. See `Miyatake et al (2021) <https://ui.adsabs.harvard.edu/abs/2021arXiv210100113M/abstract>`_ for the definition of galaxy parameters. Here is the list of keys.
 
-           - HOD parameters:
+           - **hod_type** (*str*): The type of HOD model to use. Options are `'standard'` (default; satellites conditioned on centrals) or `'independent'` (central and satellite occupations treated as independent, e.g. for ELG-like samples whose central occupation does not reach unity; central form chosen by `cen_model`, satellite form chosen by `sat_model`).
+
+           - HOD parameters (Standard, when `hod_type` is `'standard'` or not specified):
 
                 - **logMmin** (*float*): Central HOD parameter, :math:`\log M_\mathrm{min}`
                 - **sigma_sq** (*float*): Central HOD parameter, :math:`\sigma^2`
                 - **logM1** (*float*): Satellite HOD parameter, :math:`\log M_1`
                 - **alpha** (*float*): Satellite HOD parameter, :math:`\\alpha`
                 - **kappa** (*float*): Satellite HOD parameter, :math:`\kappa`
+
+           - HOD parameters (when `hod_type` is `'independent'`; central and satellite occupations
+             are treated as independent, with their functional forms chosen by `cen_model` and
+             `sat_model`):
+
+                - **cen_model** (*str*): Central occupation functional form. Options are `'hmq'`
+                  (default, modified HMQ) or `'asymsigmoid'` (asymmetric sigmoid, Linde et al. 2026,
+                  `arXiv:2605.21436 <https://arxiv.org/abs/2605.21436>`_, Eq. 42).
+
+                - Central HOD parameters, when `cen_model` is `'hmq'` (default):
+
+                    - **p_max** (*float*): :math:`p_\mathrm{max}`
+                    - **sigma_M** (*float*): :math:`\sigma_M`
+                    - **logMc** (*float*): :math:`\log M_c`
+                    - **gamma** (*float*): :math:`\gamma`
+
+                - Central HOD parameters, when `cen_model` is `'asymsigmoid'`:
+
+                    - **f_max** (*float*): :math:`f_\mathrm{max}`
+                    - **logMmin** (*float*): :math:`\log M_\mathrm{min}` -- the mass where
+                      :math:`\langle N_\mathrm{cen}\\rangle = f_\mathrm{max}/2`
+                    - **a** (*float*), **b** (*float*): shape parameters;
+                      :math:`C(a,b) = (2^b-1)^a` is fixed internally by the :math:`f_\mathrm{max}/2`
+                      condition above, not a free input. Real best-fit :math:`b` can be as small
+                      as :math:`\sim 10^{-10}`; the implementation evaluates everything in log
+                      space to stay finite in that regime.
+
+                - **sat_model** (*str*): Satellite occupation functional form (any `cen_model`):
+
+                    - `'zheng_cutoff'` (default): Zheng 2005 with a high-mass cutoff,
+                      :math:`\langle N_\mathrm{sat}\\rangle = A_s (M_h/M_1)^\\alpha \exp(-M_\mathrm{cut}/M_h)\exp(-M_h/M_\mathrm{max})`
+                    - `'zheng2005'`: Zheng 2005,
+                      :math:`\langle N_\mathrm{sat}\\rangle = A_s (M_h/M_1)^\\alpha \exp(-M_\mathrm{cut}/M_h)`
+
+                - Satellite HOD parameters:
+
+                    - **A_s** (*float*): :math:`A_s`
+                    - **alpha** (*float*): :math:`\\alpha`
+                    - **logM1** (*float*): :math:`\log M_1`
+                    - **logMcut** (*float*): :math:`\log M_\mathrm{cut}`
+                    - **logMmax** (*float*): :math:`\log M_\mathrm{max}` (only for `sat_model='zheng_cutoff'`)
 
            - off-centering parameters:
 
@@ -204,6 +296,7 @@ class darkemu_x_hod(base_class):
               gparams (dict): a dictionary to specify galaxy parameters
         """
         # gparams includes galaxy-related parameters such as HOD, offcentering, incompleteness, and pi_max.
+        _validate_gparams(gparams)
         if self.gparams != gparams:
             if self.gparams and self.gparams["sat_dist_type"] != gparams["sat_dist_type"]:
                 self.p_hm_satdist_computed = False
@@ -801,22 +894,106 @@ class darkemu_x_hod(base_class):
         self.p_hm_satdist_computed = True
 
     def _compute_HOD(self):
-        Mmin = 10**self.gparams["logMmin"]
-        sigma = np.sqrt(self.gparams["sigma_sq"])
-        M1 = 10**self.gparams["logM1"]
-        alpha = self.gparams["alpha"]
-        kappa = self.gparams["kappa"]
+        # Model names and required parameters were checked in set_galaxy().
+        hod_type = self.gparams.get("hod_type", "standard")
 
-        Ncen = 0.5*special.erfc(np.log10(Mmin/self.Mh)/sigma)
-        lambda_sat = np.zeros(self.Mh.shape)
-        sel = (self.Mh > kappa*Mmin)
-        lambda_sat[sel] = ((self.Mh[sel]-kappa*Mmin)/M1)**alpha
-        Nsat = Ncen*lambda_sat
+        # Independent central/satellite occupations (e.g. ELG-like samples)
+        if hod_type == "independent":
+            # cen_model selects the central occupation functional form:
+            #   "hmq"         : modified HMQ (default, backward compatible)
+            #   "asymsigmoid" : asymmetric sigmoid, Linde et al. 2026 (arXiv:2605.21436) Eq. (42)
+            cen_model = self.gparams.get("cen_model", "hmq")
 
-        alpha_inc = self.gparams["alpha_inc"]
-        logM_inc = self.gparams["logM_inc"]
-        f_inc = np.maximum(0., np.minimum(
-            1., 1.+alpha_inc*(np.log10(self.Mh) - logM_inc)))
+            # sat_model selects the satellite occupation functional form:
+            #   "zheng_cutoff" : Zheng 2005 + high-mass cutoff (default)
+            #   "zheng2005"    : Zheng 2005 (no high-mass cutoff)
+            sat_model = self.gparams.get("sat_model", "zheng_cutoff")
+
+            A_s = self.gparams["A_s"]
+            alpha = self.gparams["alpha"]
+            M1 = 10**self.gparams["logM1"]
+            Mcut = 10**self.gparams["logMcut"]
+
+            logMh = np.log10(self.Mh)
+
+            if cen_model == "asymsigmoid":
+                # Central HOD (asymmetric sigmoid, Linde et al. 2026, Eq. 42):
+                #   N_cen(Mh) = f_max / {1 + [C(a,b) * logMmin/logMh]^(1/a)}^(1/b)
+                # C(a,b) = (2^b - 1)^a is the exact solution of the paper's own
+                # normalization condition "N_cen(Mmin) = f_max/2" (the paper's
+                # compact bracket notation for C(a,b) does not satisfy that
+                # condition, so the normalization-derived form is used here).
+                #
+                # Best-fit b can be as small as ~1e-10 for H-alpha emitter
+                # samples, where naively evaluating (1+bracket)**(1/b) overflows,
+                # so the whole computation is done in log space.
+                f_max = self.gparams["f_max"]
+                logMmin = self.gparams["logMmin"]
+                a = np.clip(self.gparams["a"], 1e-6, 5.0)
+                b = np.clip(self.gparams["b"], 1e-12, 5.0)
+                logC = a * np.log(np.expm1(b * np.log(2.0)))
+                logMh_safe = np.maximum(logMh, 1e-6)
+                ratio = np.maximum(logMmin / logMh_safe, 1e-12)
+                log_bracket = (logC + np.log(ratio)) / a
+                bracket = np.exp(np.clip(log_bracket, -50, 50))
+                exponent = np.log1p(bracket) / b
+                Ncen = f_max * np.exp(-np.clip(exponent, 0, 700))
+            else:  # cen_model == "hmq"
+                # Central HOD (modified HMQ model)
+                p_max = self.gparams["p_max"]
+                sigma_M = self.gparams["sigma_M"]
+                logMc = self.gparams["logMc"]
+                gamma = self.gparams["gamma"]
+                term1 = 2 * p_max * (1.0 / (np.sqrt(2 * np.pi) * sigma_M))
+                term2 = np.exp(-((logMh - logMc)**2) / (2 * sigma_M**2))
+                term3 = 0.5 * (1 + special.erf(gamma * (logMh - logMc) / (np.sqrt(2) * sigma_M)))
+                Ncen = term1 * term2 * term3
+
+            # Satellite HOD (independent of the central occupation)
+            Nsat = A_s * (self.Mh / M1)**alpha * np.exp(-Mcut / self.Mh)
+            if sat_model == "zheng_cutoff":
+                Mmax = 10**self.gparams["logMmax"]
+                Nsat = Nsat * np.exp(-self.Mh / Mmax)
+
+            lambda_sat = np.zeros(self.Mh.shape)
+            sel = (Ncen > 1e-15)
+            lambda_sat[sel] = Nsat[sel] / Ncen[sel]
+            
+            # ELG correction: avoid zero-division in effective bias and other terms.
+            # Ncen can be very small for large M, so lambda_sat can be artificially huge.
+            # It's better to clip lambda_sat if it gets too large just to be safe.
+            lambda_sat[lambda_sat > 1e10] = 1e10
+
+        else:
+            # Fallback to the original standard HOD model
+            Mmin = 10**self.gparams["logMmin"]
+            sigma = np.sqrt(self.gparams["sigma_sq"])
+            M1 = 10**self.gparams["logM1"]
+            alpha = self.gparams["alpha"]
+            kappa = self.gparams["kappa"]
+
+            Ncen = 0.5*special.erfc(np.log10(Mmin/self.Mh)/sigma)
+            lambda_sat = np.zeros(self.Mh.shape)
+            sel = (self.Mh > kappa*Mmin)
+            
+            # Avoid division by very small Ncen in standard model as well
+            Nsat = np.zeros(self.Mh.shape)
+            Nsat[sel] = Ncen[sel] * ((self.Mh[sel]-kappa*Mmin)/M1)**alpha
+            
+            sel2 = (Ncen > 1e-15)
+            lambda_sat[sel2] = Nsat[sel2] / Ncen[sel2]
+            
+            # Clip huge values just in case
+            lambda_sat[lambda_sat > 1e10] = 1e10
+
+        if "alpha_inc" in self.gparams and "logM_inc" in self.gparams:
+            alpha_inc = self.gparams["alpha_inc"]
+            logM_inc = self.gparams["logM_inc"]
+            f_inc = np.maximum(0., np.minimum(
+                1., 1.+alpha_inc*(np.log10(self.Mh) - logM_inc)))
+        else:
+            f_inc = np.ones_like(self.Mh)
+            
         self.f_inc = f_inc
 
         self.Ncen = Ncen*f_inc
@@ -847,8 +1024,15 @@ class darkemu_x_hod(base_class):
         Nsat_mat = np.tile(self.Nsat, (len(self.fftlog_1h.k), 1)).transpose()
         Hs_1h = Nsat_mat/self.ng*self.p_hm_dist_1h
 
-        self.p_1hcs = self.do_integration(
-            Hc_1h_over_Ncen*Hs_1h*self.dndM_mat*self.Mh_mat, axis=0, dx=self.dlogMh)
+        if self.gparams.get("hod_type", "standard") == "independent":
+            # For ELGs, assume independent Ncen and Nsat: <Ncen Nsat> = <Ncen><Nsat>
+            Ncen_mat = np.tile(self.Ncen, (len(self.fftlog_1h.k), 1)).transpose()
+            self.p_1hcs = self.do_integration(
+                Hc_1h_over_Ncen*Ncen_mat*Hs_1h*self.dndM_mat*self.Mh_mat, axis=0, dx=self.dlogMh)
+        else:
+            # In standard HOD, <Ncen Nsat> = <Nsat>
+            self.p_1hcs = self.do_integration(
+                Hc_1h_over_Ncen*Hs_1h*self.dndM_mat*self.Mh_mat, axis=0, dx=self.dlogMh)
 
     def _compute_p_1hss(self, redshift):
         if self.logdens_computed == False:
@@ -862,13 +1046,28 @@ class darkemu_x_hod(base_class):
         if self.p_hm_satdist_computed == False:
             self._compute_p_hm_satdist(redshift)
 
-        Ncen_mat = np.tile(self.Ncen, (len(self.fftlog_1h.k), 1)).transpose()
-        lambda_sat_mat = np.tile(
-            self.lambda_sat, (len(self.fftlog_1h.k), 1)).transpose()
-        lambda_1h_mat = lambda_sat_mat/self.ng*self.p_hm_dist_1h
+        if self.gparams.get("hod_type", "standard") == "independent":
+            # For ELGs, <Nsat(Nsat-1)> is approx <Nsat>^2 (assuming Poisson and independent of Ncen)
+            Nsat_mat = np.tile(self.Nsat, (len(self.fftlog_1h.k), 1)).transpose()
+            Hs_1h = Nsat_mat/self.ng*self.p_hm_dist_1h
+            
+            self.p_1hss = self.do_integration(
+                Hs_1h*Hs_1h*self.dndM_mat*self.Mh_mat, axis=0, dx=self.dlogMh)
+        else:
+            # Standard HOD
+            Ncen_mat = np.tile(self.Ncen, (len(self.fftlog_1h.k), 1)).transpose()
+            
+            # Use small number to avoid zero division in old model as well just in case
+            lambda_sat_base = np.zeros(self.Mh.shape)
+            sel = (self.Ncen > 1e-15)
+            lambda_sat_base[sel] = self.Nsat[sel] / self.Ncen[sel]
+            
+            lambda_sat_mat = np.tile(
+                lambda_sat_base, (len(self.fftlog_1h.k), 1)).transpose()
+            lambda_1h_mat = lambda_sat_mat/self.ng*self.p_hm_dist_1h
 
-        self.p_1hss = self.do_integration(
-            lambda_1h_mat*lambda_1h_mat*Ncen_mat*self.dndM_mat*self.Mh_mat, axis=0, dx=self.dlogMh)
+            self.p_1hss = self.do_integration(
+                lambda_1h_mat*lambda_1h_mat*Ncen_mat*self.dndM_mat*self.Mh_mat, axis=0, dx=self.dlogMh)
 
     def _compute_p_2hcc(self, redshift):
         if self.logdens_computed == False:
@@ -885,36 +1084,16 @@ class darkemu_x_hod(base_class):
         poff = self.gparams["poff"]
         Roff = self.gparams["Roff"]
 
-        if False:
-            Hc_2h = self.Ncen_mat/self.ng * \
-                (1. - poff + poff * np.exp(-0.5 * self.k_2h_mat**2*(Roff*self.R200_mat)**2))
-            Hc_2hHc_2h_mat = np.zeros(
-                (len(self.Mh), len(self.Mh), len(self.fftlog_2h.k)))
-            for i in range(Hc_2hHc_2h_mat.shape[0]):
-                for j in range(Hc_2hHc_2h_mat.shape[1]):
-                    Hc_2hHc_2h_mat[i, j] = Hc_2h[i]*Hc_2h[j]
+        Hc_2h = self.Ncen_mat/self.ng * \
+            (1. - poff + poff * np.exp(-0.5 * self.k_2h_mat**2*(Roff*self.R200_mat)**2))
 
-            xx, yy = np.meshgrid(self.dndM, self.dndM)
-            dndMdndM_mat = np.tile(xx*yy, (len(self.fftlog_2h.k), 1, 1)).transpose()
-
-            xx, yy = np.meshgrid(self.Mh, self.Mh)
-            MhMh_mat = np.tile(xx*yy, (len(self.fftlog_2h.k), 1, 1)).transpose()
-
-            integrant = self.p_hh*Hc_2hHc_2h_mat*dndMdndM_mat*MhMh_mat
-            self.p_2hcc = self.do_integration(self.do_integration(
-                integrant, axis=0, dx=self.dlogMh), axis=0, dx=self.dlogMh)
-
-        if True:
-            Hc_2h = self.Ncen_mat/self.ng * \
-                (1. - poff + poff * np.exp(-0.5 * self.k_2h_mat**2*(Roff*self.R200_mat)**2))
-
-            p_2hcc_M2_int = list()
-            for i, M in enumerate(self.Mh):
-                p_2hcc_M2_int.append(self.do_integration(
-                    self.p_hh[i] * Hc_2h * self.dndM_mat * self.Mh_mat, axis=0, dx=self.dlogMh))
-            p_2hcc_M2_int = np.array(p_2hcc_M2_int)
-            self.p_2hcc = self.do_integration(
-                p_2hcc_M2_int * Hc_2h * self.dndM_mat * self.Mh_mat, axis=0, dx=self.dlogMh)
+        p_2hcc_M2_int = list()
+        for i, M in enumerate(self.Mh):
+            p_2hcc_M2_int.append(self.do_integration(
+                self.p_hh[i] * Hc_2h * self.dndM_mat * self.Mh_mat, axis=0, dx=self.dlogMh))
+        p_2hcc_M2_int = np.array(p_2hcc_M2_int)
+        self.p_2hcc = self.do_integration(
+            p_2hcc_M2_int * Hc_2h * self.dndM_mat * self.Mh_mat, axis=0, dx=self.dlogMh)
 
     def _compute_p_2hcs(self, redshift):
         if self.logdens_computed == False:
@@ -962,6 +1141,7 @@ class darkemu_x_hod(base_class):
 
         Hs_2h_mat = np.tile(self.Nsat, (len(self.fftlog_2h.k), 1)
                             ).transpose()/self.ng*self.p_hm_dist_2h
+
         p_2hss_M2_int = list()
         for i, M in enumerate(self.Mh):
             p_2hss_M2_int.append(self.do_integration(
@@ -1635,7 +1815,7 @@ class darkemu_x_hod(base_class):
             self._compute_dndM_spl(redshift)
         if self.HOD_computed == False:
             self._compute_HOD()
-        if self.ng_computed == False:
+        if self.ng_cen_computed == False:
             self._compute_ng_cen()
         return self.ng_cen
 
